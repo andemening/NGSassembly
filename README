@@ -1,0 +1,24 @@
+########################################################
+# A script for running Mosaik Assembler pipeline
+# and calling SNPs and short indels using GigaBayes
+# chromosome by chromosome for SOLiD mate pairs
+# Author: Marcin.Kierczak@hgen.slu.se
+# Written: 18.05.2010
+# -------------------------------------------------
+# Modified and expanded
+# Co-author: Andreas.E.Lundberg@gmail.com
+# GitHub repo: ------
+# Date: 13.07.2011
+########################################################  
+            
+Program assembles one chromosome at a time from individual chromosome fasta files. \n
+Generates individual chromosome directory in results directory. 
+First set up working directories and pipeline variables. 
+Alignment is done in linear processing fashion using multiple cores. 
+All other steps are run IN PARALLEL utilizing user selectible number of threads. 
+SNP calling done 'en masse', all processes run at same time. 
+This analysis pipeline requires a lot of disk space. 
+Make sure paths are set correctly as script will replace existing results directory !!
+All programs need to reside in same directory !! 
+The reads files are processed from reads directory using list *.dat command  
+                      
