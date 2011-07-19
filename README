@@ -5,9 +5,12 @@
 # Author: Marcin.Kierczak@hgen.slu.se
 # Written: 18.05.2010
 # -------------------------------------------------
-# Modified and expanded
+# Modified and expanded, now using Mosaik suite 1.1.0021
+# with Freebayes 0.8.5 (also bamtools and bamaddrg)
+# Bash based, autorun, user interface, utilizing
+# multiple threads
 # Co-author: Andreas.E.Lundberg@gmail.com
-# GitHub repo: ------
+# GitHub repo: github.com/Papegoja/NGSassembly
 # Date: 13.07.2011
 ########################################################  
             
