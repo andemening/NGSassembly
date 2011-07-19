@@ -277,40 +277,55 @@ mkdir $results_dir 2>/dev/null
 
 ############################ Assembly loop ############################
 # Re-use multi-core functions -> max threads set by $threads
-
 for file in $list; do
 	start=$SECONDS
 	chromosome=${file%\.*}								# omits file extension
 	mkdir $results_dir/$chromosome 2>/dev/null
 	echo -e "Processing chromosome $chromosome..." | tee -a $main_dir/pipeline.log
 
-	# These 3 processes runs parallel threads=$threads (default 14)
-	Build
-	BuildCS
-	JumpDB 					# Jump db is a must for speed, load entire db in memory
-    
-    for genome in $genomes; do
-		mkdir $results_dir/$chromosome/$genome 2>/dev/null
-		
-		Align					# NO PARALLEL THREADING
-
-		# All these threads at once	
-		Sort					# Sort SE reads; sort and resolve MP reads
-		RemoveDuplicates			# Remove PCR bias
-		Merge					# Merge all chromosomes in each line to get complete coverage; total coverage for all pooled sequences (important for SNP statistics?) 
-		Coverage				# Calculate (and plot) coverage
-		Assemble				# Assemble alignment chromosome by chromosome and output ACE file
-		Text					# Convert assembly to BAM file format
-							# Wait for all functions to finish, all files must be completed and written before 
-	done
-#	CallSNP					# Call SNP for each chromosome and detach 
-	continue					
+	# Semi-sequential run
+	Build	&					# detachable process
+	BuildCS					# non-detachable process
+	JumpDB 					# dependent on BuildCS
+	wait						# wait for detached function Build to finish before entering for-loop
 	
+	for genome in $genomes; do
+		mkdir $results_dir/$chromosome/$genome 2>/dev/null
+		Align					# NO PARALLEL THREADING
+	done
+					
 	end=$SECONDS
 	exectime=$((end - start))
 	echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
 done
-wait
+
+
+#################### Alignment manipulation loop ######################
+# SRMCAT, Sort-RemoveDucplictes-Merge-Coverage-Assemble-Text loop
+NUM=0
+QUEUE=""
+for file in $list; do
+	start=$SECONDS
+	chromosome=${file%\.*}
+	echo -e "Alignment manipulation for chromosome $chromosome..." | tee -a $main_dir/pipeline.log
+	for genome in $genomes; do
+		
+		## All alignment manipulation loops run in parallel over $threads
+		SRMCAT & 					# Start and detach process		
+		PID=$!					# Get PID of process just started
+		queue $PID					# 
+		# Spawn process
+		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
+			checkqueue
+			sleep 10
+		done
+	done
+	end=$SECONDS
+	exectime=$((end - start))
+	echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
+done
+
+
 
 ############################# SNP calling loop ################################
 # For queuing of processes
@@ -327,9 +342,9 @@ for file in $list; do
 		PID=$!					# Get PID of process just started
 		queue $PID					# 
 		# Spawn process
-		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $np_proc
+		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
 			checkqueue
-			sleep 10 # 0.1 s
+			sleep 10
 		done
 	done
 	end=$SECONDS

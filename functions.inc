@@ -78,7 +78,8 @@ function Align {					## Align
 		# -mhp maximum hash positions 
 		# -act alignment candidate threshold
 		# -mm mismatches
-		#-j $results_dir/$chromosome/$chromosome".jmp
+		# -mmp threshold of alignment quality, AlignmentQualityThreshold, number between 0 & 99, =10 for conservative filtering
+		#-j jumpdatabase, $results_dir/$chromosome/$chromosome".jmp
 	
 		# single end, practical example
 		# ~/mosaik-aligner/bin/MosaikAligner -in /home/gallus/gallus_high_35_1.dat -ia chr2.cs.dat -ibs chr2.dat -a all -m all -hs 15 -p 16 -bw 13 -act 20 -mm 4 -mhp 100 -j chr2.cs.jmp -out results.gal_high_35bp_1.16cores/chr2.aligned.dat | tee -a results.gal_high_35bp_1.16cores/aligner.log
@@ -109,12 +110,14 @@ function Align {					## Align
 function Sort {					## Sorting, two different approaches for SE and MP
 	# simply sorts SE
 	# resolves MP, fragment length is calculated using confidence interval, min,max,mean of distribution is returned
+		# -mem number of alingments in memory, sets sorting cache size, default 6000000
+		# 
 	st=$SECONDS
 	echo -e "\tSorting aligned reads for $genome..."
 	$mosaik_dir/MosaikSort -in $results_dir/$chromosome/$genome/$chromosome".aligned.dat" -out $results_dir/$chromosome/$genome/$chromosome".sorted.dat" | tee -a $results_dir/$chromosome/
 	
 	# 16 processes at same time
-	# ~/mosaik-aligner/bin/MosaikSort -in chr2.aligned.dat -mem 25000000 -afl -sa -out chr2.aligned.sorted.dat | tee -a mosaik.log
+	# ~/mosaik-aligner/bin/MosaikSort -in chr2.aligned.dat -mem 18000000 -afl -sa -out chr2.aligned.sorted.dat | tee -a mosaik.log
 	
 	$mosaik_dir/fixlog $results_dir/$chromosome/mosaik.log
 	en=$SECONDS
@@ -178,7 +181,16 @@ function Text {					## Convert assembly archive to BAM file format for analysis 
 	$mosaik_dir/MosaikText -in $results_dir/$chromosome/$genome/"assembly_"$chromosome".ace" -bam $results_dir/$chromosome/$genome/$chromosome".assembly.bam" | tee -a 
 }
 
-################# All threads at once ####################
+function SRMCAT { 				## These functions run in sequential fashion
+		Sort						# Sort SE reads; sort and resolve MP reads
+		RemoveDuplicates				# Remove PCR bias
+		Merge						# Merge all chromosomes in each line to get complete coverage; total coverage for all pooled sequences (important for SNP statistics?) 
+		Coverage					# Calculate coverage
+		Assemble					# Assemble alignment chromosome by chromosome and output ACE file
+		Text						# Convert assembly ACE to BAM file format
+}
+
+####################### SNP call pipe #####################
 # all previous functions must have completed before this step
 
 function CallSNP {				## Calling SNPs and short INDELS
@@ -197,7 +209,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 		$mosaik_dir/bamaddrg -b $sample_name -s $chromosome -r $genome			# appends each $genome as read group name for for corresponding bam-files
 		# infiles is string with all input files for bayesian analysis
 		# $infiles = "-in /complete/path/file1.bam -in /complete/path/file2.bam -in ... "
-		infiles="$infiles-in $sample_name "
+		infiles="$infiles-in $sample_name "								# generate list of bam-files for 
 	done
 	
 	# Bamtools merge piped to bamleftalign for homogenization of positional distribution of IN/DELs, computationally inexpensive
@@ -205,8 +217,9 @@ function CallSNP {				## Calling SNPs and short INDELS
 	# bamtools merge xxx | bamleftalign xxx | freebayes --stdin -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -dd --pvar $PSL --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome$/freebayes.merged.leftaligned.log
 
 	$mosaik_dir/bamtools merge$infiles | $mosaik_dir/bamleftalign -f $refseq_dir/$chomosome/$file | $mosaik_dir/freebayes --stdin -f $refseq_dir/$chomosome/$file 
+		# -f fasta refseq, $file is current chromosome basename .fasta file in iteration 
 
-	$mosaik_dir/freebayes -b $results_dir/$chromosome/$genome/$bam_file -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -mnps --dd --pvar $PSL --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome/freebayes.log
+#	$mosaik_dir/freebayes -b $results_dir/$chromosome/$genome/$bam_file -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -mnps --dd --pvar $PSL --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome/freebayes.log
 	SNPend=$SECONDS
 	SNPtime=$((SNPend - SNPstart))
 	echo -e "\tSNP/INDEL calling done in $exectime seconds." | tee -a $main_dir/
@@ -241,8 +254,8 @@ function checkqueue {
 	for PID in $OLDCHQUEUE
 	do
 		if [ ! -d /proc/$PID ] ; then 			# If directory does not exist -> start new process
-			regeneratequeue
-			break
+			regeneratequeue					# new queue if some job/PID has finished
+			break							# exit if-loop
 		fi
 	done
 }
