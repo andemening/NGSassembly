@@ -311,7 +311,7 @@ for file in $list; do
 	for genome in $genomes; do
 		
 		## All alignment manipulation loops run in parallel over $threads
-		SRMCAT & 					# Start and detach process		
+		RSMCAT & 					# Start and detach process		
 		PID=$!					# Get PID of process just started
 		queue $PID					# 
 		# Spawn process
@@ -329,6 +329,7 @@ done
 
 ############################# SNP calling loop ################################
 # For queuing of processes
+# 3 seq. runs per line -> 2 SNP calls per chromosome
 NUM=0
 QUEUE=""
 for file in $list; do
@@ -337,7 +338,7 @@ for file in $list; do
 	echo -e "Calling SNPs in chromosome $chromosome..." | tee -a $main_dir/pipeline.log
 	for genome in $genomes; do
 		
-		## All SNP calls running at same time
+		## SNP calls in $threads number of threads
 		CallSNP & 					# Start and detach process		
 		PID=$!					# Get PID of process just started
 		queue $PID					# 
