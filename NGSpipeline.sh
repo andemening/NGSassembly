@@ -70,7 +70,8 @@ threads=16			#Parallel run threads in pipeline steps - Jump, Sort, DupSnoop, Mer
 
 #------------------- Settings for SNP calling -----------------------
 PSL=0.5			#SNP calling probability threshold
-CAL=3				#SNP calling minimal number of reads
+CAL=3				#SNP calling minimum number of reads
+MAQ=25			#MAQ mapping alignment quality
 #CRU=100			#Upper coverage limit for SNP calling
 #snp_proc=34		#Number of processors available for SNP calling = maximum threads created, 34 chromosomes do all at same time
 
@@ -130,7 +131,7 @@ echo -e " M) Maximum mismatches allowed, defualt SE 4; defualt MP 6: \t\t $txtre
 echo -e " N) Maximum hash positions, default 100: \t\t\t\t $txtred$max_hash_pos$txtrst \t max hash positions"
 echo -e " A) Alignment candidate threshold, SE default 20; MP default 25: \t $txtred$algn_thresh$txtrst \t alignment candidate threshold"
 echo -e " B) Smith-Waterman bandwidth , SE default 13; MP default 17: \t\t $txtred$bandwidth$txtrst \t SW bandwidth"
-echo -e " F) Mean fragment lngth/insert size: \t\t\t\t\t $txtred$mfl$txtrst\t bp mean fragment length"
+echo -e " F) Mean fragment length/insert size: \t\t\t\t\t $txtred$mfl$txtrst\t bp mean fragment length"
 echo -e " R) Search radius from mean fragmen length: \t\t\t\t $txtred$radius$txtrst\t bp radius"
 echo
 echo -e " T) Parallel threads created in pipeline steps, default 14: \t\t $txtred$threads$txtrst \t threads"
@@ -138,8 +139,9 @@ echo -e "    JumpDB, Sort, RemoveDuplicates, Merge, Coverage, Assembly \n\n\n"
 
 
 echo -e "$txtgrn ################# Settings for SNP calling ############################## $txtrst \n\n"
-echo -e " S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$PSL$txtrst \t probabilty"
-echo -e " C) Minimal number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t reads \n\n"
+echo -e " S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$PSL$txtrst \t calling probabilty"
+echo -e " C) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
+echo -e " D) Minimum required mapping quality for alignment, default 25: \t $txtred$MAQ$txtrst \t mapping quality \n\n"
 
 echo -e "$txtblu ################# Enter choice ############################## $txtrst \n"
 echo -ne "$txtpur Enter corresponding character to update setting.$txtcyn Start analysis with I$txtred, quit with Q: $txtrst"
@@ -237,6 +239,11 @@ function UpdateSettings() {
 			read
 			CAL=$REPLY
 		;;
+		"D" | "d" )
+			echo -ne "$txtred Enter new value: $txtrst"
+			read
+			CAL=$REPLY
+		;;
 		"Q" | "q" )
 			echo
 			exit 0
@@ -301,7 +308,7 @@ done
 
 
 #################### Alignment manipulation loop ######################
-# SRMCAT, Sort-RemoveDucplictes-Merge-Coverage-Assemble-Text loop
+# RSMCAT, RemoveDuplicates-Sort-Merge-Coverage-Assemble-Text loop
 NUM=0
 QUEUE=""
 for file in $list; do

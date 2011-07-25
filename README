@@ -10,18 +10,21 @@
 # Bash based, autorun, user interface, utilizing
 # multiple threads
 # Co-author: Andreas.E.Lundberg@gmail.com
-# GitHub repo: github.com/Papegoja/NGSassembly
+# GitHub repo: git://github.com/Papegoja/NGSassembly.git
 # Date: 13.07.2011
 ########################################################  
             
-Program assembles one chromosome at a time from individual chromosome fasta files. \n
+Program aligns one chromosome at a time after Build and BuildCS.
 Generates individual chromosome directory in results directory. 
+
 First set up working directories and pipeline variables. 
 Alignment is done in linear processing fashion using multiple cores. 
-All other steps are run IN PARALLEL utilizing user selectible number of threads. 
-SNP calling done 'en masse', all processes run at same time. 
+
+All other steps are run IN PARALLEL utilizing user selectable number of threads. 
+Build -> BuildCS -> JumpDB -> Align -> RemoveDuplicates -> Sort -> Assemble -> Text -> freebayes
+
 This analysis pipeline requires a lot of disk space. 
-Make sure paths are set correctly as script will replace existing results directory !!
-All programs need to reside in same directory !! 
-The reads files are processed from reads directory using list *.dat command  
+Make sure paths are set correctly as script will replace existing results directory. 
+All programs need to reside in same directory. 
+The reads files are processed from reads directory. 
                       
