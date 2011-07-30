@@ -1,13 +1,13 @@
 #!/bin/bash
 
-## Fix log paths, each analysis log in separate matching folder
-## Fix input output filenames
+## Removal of certain files 
+
 
 ################# Parallel threads ####################
 function Build {					## Create binary file in basespace
 		# -fr,-fr2 bases for 1st mate and 2nd mate
 		# -fq,-fq2 base qualities for 1st mate and 2nd mate
-		# -assignQual assign
+		# -assignQual assign a quality value to all bases
 		# -oa outfile for reference sequence; -out outfile when converting reads
 		# -st specifies sequencing technology; -ds description; -ln library name
 		# -mfl specify median fragment length for mate-pairs
@@ -36,19 +36,19 @@ function Build {					## Create binary file in basespace
 		# mean Phred quality score 20 per read
 		# perl ~/SOLiD_preprocess_meanFilter_v2.pl -i mp -f ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_F3.csfasta -g ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_F3_QV.qual -r ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_R3.csfasta -s ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_R3_QV.qual -p on -q 20 -a on -v on -o gallus_HS_MP_2x50bp | tee -a preprocess_meanFilter.log
 		
-		# after quality filtering >20 and mate-pair pairing, 163.00 Mb passed out of 338,21 Mb
+		# after quality filtering >20 and mate-pair pairing, 163.00 reads passed out of 338,21 reads total
 		# ~/mosaik-aligner/bin/MosaikBuild -fr gallus_HS_MP_2x50bp_T_mp_F3.csfasta -fq gallus_HS_MP_2x50bp_T_mp_F3_QV.qual -fr2 gallus_HS_MP_2x50bp_T_mp_R3.csfasta -fq2 gallus_HS_MP_2x50bp_T_mp_R3_QV.qual -st solid -ln HIGH_LINE -id HS_MP_2x50bp -ds "gallus high HS 2x50bp mate-pairs" -sn "gallus gallus domesticus" -mfl 400 -out gallus_HS_2x50bp.dat | tee -a build.gallus_HS_2x50bp.log
 
 	echo -e "\tCreating binary file in basespace..."		
-	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$chromosome/$chromosome".dat" -mfl $mfl | tee -a $results_dir/$chromosome/mosaik.log
-	$mosaik_dir/fixlog $results_dir/$chromosome/mosaik.log
+	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$chromosome/$chromosome".dat" | tee -a $results_dir/$chromosome/build.log
+	$mosaik_dir/fixlog $results_dir/$chromosome/build.log
 }
 
 
 function BuildCS {    				## Create binary file in colorspace
 	echo -e "\tCreating binary file in colorspace..."
-	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$chromosome/$chromosome".cs.dat" -mfl $mfl -cs | tee -a $results_dir/$chromosome/mosaik.log
-	$mosaik_dir/fixlog $results_dir/$chromosome/mosaik.log
+	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$chromosome/$chromosome".cs.dat" -cs | tee -a $results_dir/$chromosome/buildCS.log
+	$mosaik_dir/fixlog $results_dir/$chromosome/buildCS.log
 }
 
 
@@ -246,7 +246,11 @@ function CallSNP {				## Calling SNPs and short INDELS
 	# Pipe entire SNP call command from stdout to stdin; bamtools merge -> bamleftalign -> freebayes
 	# Bamtools merge piped to bamleftalign for homogenization of positional distribution of IN/DELs, computationally inexpensive
 	# bamtools merge xxx | bamleftalign xxx | freebayes --stdin -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -dd --pvar $PSL --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome$/freebayes.merged.leftaligned.log
-	$mosaik_dir/bamtools merge $infiles| $mosaik_dir/bamleftalign -f $refseq_dir/$chomosome/$file | $mosaik_dir/freebayes --stdin -f $refseq_dir/$chomosome/$file".fa" --ploidy diploid --indel -d --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome
+
+	# bamleftalign only required for MP reads
+	$mosaik_dir/bamleftalign -f $refseq_dir/$chomosome/$genome/
+
+	$mosaik_dir/bamtools merge $infiles| $mosaik_dir/freebayes --stdin -f $refseq_dir/$chomosome/$file".fa" --ploidy 2 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome
 		# -f fasta refseq, $file is current chromosome basename in iteration 		
 		# -v, output file
 		# -log, log filename
@@ -255,6 +259,9 @@ function CallSNP {				## Calling SNPs and short INDELS
 		# --pvar, reporting probaility limit
 		# --min-coverage, least required coverage to process site
 		# --min-mapping-quality, minimum default 30
+		# --use-mapping-quality
+		# --ignore-reference-allele 
+
 		
 	SNPend=$SECONDS
 	SNPtime=$((SNPend - SNPstart))
