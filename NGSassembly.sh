@@ -46,28 +46,39 @@ txtrst=$(tput sgr0)       # Text reset
 
 ################### Variables for analysis pipeline #########################
 #------------------- Folder settings -----------------------
-mosaik_dir=~andreas/mosaik-aligner/bin				#Programs bin/ directory, all programs required in same directory: Mosaik*, freebayes, bamleftalign, bamaddrg
-main_dir=`pwd`								#Main directory
-refseq_dir=~/galGal3/refseq						#Directory containing reference sequences
-results_dir=~andreas/galGal3/results				#Directory to store the results
-reads_dir=/home/gallus							#Directory containing reads
-#genomes="galGal3_HS galGal3_MW"					#Name of the dataset for genome1, must correlate to BAM read-groups
-genomes=`ls $reads_dir/*.dat | awk -F "." '{print $1}' | awk -F "/" '{print $4}'`			# these will be bam-file read group
-# gallus_high_35_1	gallus_high_35_2	gallus_high_50	gallus_low_35_1	gallus_low_35_2	gallus_low_50
+mosaik_dir=~andreas/mosaik-aligner/bin				# Programs bin/ directory, all programs required in same directory
+main_dir=`pwd`								# Main directory is current working directory
+refseq_dir=~/galGal3/refseq						# Directory containing reference sequences
+results_dir=~andreas/galGal3/results				# Directory to store the results
+reads_dir=/home/gallus							# Directory containing reads
+project_name="galGal3"							# Project name, preferably the organism genome name, e.g. galGal3
+genomes=`ls /usr/gallus/high_MP_2x50bp.HS.208/*.dat | awk -F "/" '{print $NF}'` 		# filename of binary archive for sequencing run; NF='number of fields' aka. last field
+
+# gallus_high_35_1.dat
+# gallus_high_35_2.dat
+# gallus_high_50.dat
+# gallus_low_35_1.dat
+# gallus_low_35_2.dat
+# gallus_low_50.dat
 
 #------------------- Settings for Mosaik pipeline -----------------------
 proc=16				#Number of processor cores available, -p=16
 #memory=70375828		#Number of hashes to be stored in memory (default=6000000) 
 #QV_filter=20		#Filtering of raw reads, phred scores, >20
 hash_size=15		#Hash size, -hs=15
-max_mismatches=6		#Number of allowed mismatches, -mm=4 for single-end; -mm=6 for mate-pairs
-max_hash_pos=100		#Number of stored hash positions, -mhp=100
-algn_thresh=25		#Alignment threshold, -act=20 for single-end, -act=25 for mate-pairs
-bandwidth=17		#Bandwith for banded Smith-Waterman algorithm, -bw=13 for single-end; -bw=17 for mate-pairs
-mfl=3500			#Mean fragment length in bp for mate-pairs, HARDCODED FROM ANALYSIS
+mhp=100		#Number of stored hash positions, -mhp=100
+
+SE_mismatches=4		#Maximum allowed mismatches in read, -mm=4 for single-end, -mm=6 for mate-pairs
+MP_mismatches=6
+SE_act=20			#Alignment threshold, -act=20 for single-end, -act=25 for mate-pairs
+MP_act=25
+SE_bandwidth=13		#Bandwith for banded Smith-Waterman algorithm, -bw=13 for single-end; -bw=17 for mate-pairs
+MP_bandwidth=17
+
+mfl=3500			#Mean fragment length in bp for mate-pairs
 #MMP=15			#Threshold for alignment quality
-radius=2000			#Search radius from mfl in bp
-threads=16			#Parallel run threads in pipeline steps - Jump, Sort, DupSnoop, Merge, Coverage, Assembly
+radius=4000			#Search radius from mfl in bp
+threads=14			#Parallel run threads in pipeline steps - Jump, Sort, DupSnoop, Merge, Coverage, Assembly
 
 #------------------- Settings for SNP calling -----------------------
 PSL=0.5			#SNP calling probability threshold
@@ -84,68 +95,73 @@ Pause() {
 
 function Presentation {
 # Presentation output
-echo -e "$txtgrn ########################################################"
-echo -e " # A script for running Mosaik Assembler pipeline"
-echo -e " # and calling SNPs and short indels using GigaBayes"
-echo -e " # chromosome by chromosome for SOLiD mate pairs"
-echo -e " # Author: Marcin.Kierczak@hgen.slu.se"
-echo -e " # Written: 18.05.2010"
-echo -e " # -------------------------------------------------"
-echo -e " # Modified and expanded"
-echo -e " # Co-author: Andreas.E.Lundberg@gmail.com"
-echo -e " # GitHub repo: ------"
-echo -e " # Date: 13.07.2011"
-echo -e " ######################################################## $txtrst \n"
+echo -e "$txtgrn########################################################"
+echo -e "# A script for running Mosaik Assembler pipeline"
+echo -e "# and calling SNPs and short indels using GigaBayes"
+echo -e "# chromosome by chromosome for SOLiD mate pairs"
+echo -e "# Author: Marcin.Kierczak@hgen.slu.se"
+echo -e "# Written: 18.05.2010"
+echo -e "# -------------------------------------------------"
+echo -e "# Modified and expanded"
+echo -e "# Co-author: Andreas.E.Lundberg@gmail.com"
+echo -e "# GitHub repo: git://github.com/Papegoja/NGSassembly.git"
+echo -e "# Date: 13.07.2011"
+echo -e "######################################################## $txtrst \n"
 
-echo "$txtylw Program assembles one chromosome at a time from individual chromosome fasta files. \n"
-echo -e " Generates individual chromosome directory in results directory. "
-echo -e " First set up working directories and pipeline variables. "
-echo -e " Alignment is done in linear processing fashion using multiple cores. "
-echo -e " All other steps are run IN PARALLEL utilizing user selectible number of threads. "
-echo -e " SNP calling done 'en masse', all processes run at same time. "
-echo -e " This analysis pipeline requires a lot of disk space. "
-echo -e "$txtred Make sure paths are set correctly as script will replace existing results directory !!"
-echo -e " All programs need to reside in same directory !! $txtrst"
-echo -e "$txtylw The reads files are processed from reads directory using list *.dat command $txtrst \n\n"
+echo -e $txtylw"Program assembles genome from concatenated chromosome fasta files. First set up working directories and pipeline variables. \n"
+#echo -e "First set up working directories and pipeline variables. "
+echo -e "Alignment is done in linear processing fashion using multiple cores. All other steps are run IN PARALLEL utilizing user selectible number of threads. "
+#echo -e "All other steps are run IN PARALLEL utilizing user selectible number of threads. "
+echo -e "SNP calling is done in streaming fashion after merging of lines. "
+#echo -e ""
+echo -e "This analysis pipeline requires a lot of disk space. $txtredMake sure paths are set correctly as script will replace existing results directory. "
+#echo -e $txtred"Make sure paths are set correctly as script will replace existing results directory !!"
+echo -e "All programs need to reside in same directory !! $txtrst"
+echo -e $txtylw"The reads files are processed from reads directory using list *.dat command $txtrst"
+echo -e $txtred"\nThe read length followed by bp (e.g. 35bp or 50 bp) must be contained in the binary read archive name. \n\n"
+
 }
 
 function DrawMenu {
-echo -e "$txtblu ###########################################################################################"
-echo -e " #                                       Menu                                              #"
-echo -e " ########################################################################################### $txtrst \n"
-echo -e "$txtcyn Initialize analysis with \t I $txtrst"
-echo -e "$txtred Quit program with \t\t Q $txtrst \n"
+echo -e $txtblu"###########################################################################################"
+echo -e "#                                       Menu                                              #"
+echo -e "########################################################################################### $txtrst \n"
+echo -e $txtcyn"Initialize analysis with \t I $txtrst"
+echo -e $txtred"Quit program with \t\t Q $txtrst \n"
 
-echo -e "$txtgrn ########################### Folder paths ################################ $txtrst"
-echo -e " 1) Directory of programs: \t\t\t\t\t $mosaik_dir"
-echo -e " 2) Main directory for master log-file: \t\t\t $main_dir"
-echo -e " 3) Reference sequence directory, one dir per chromosome: \t $refseq_dir"
-echo -e " 4) Results directory: \t\t\t\t\t\t $results_dir"
-echo -e " 5) Reads directory: \t\t\t\t\t\t $reads_dir"
-echo -e " 6) Library name (i.e. highline & lowline): \t\t\t $genomes \n\n"
+echo -e $txtgrn"########################### Folder paths ################################ $txtrst"
+echo -e "1) Project name, preferably genome name: \t\t\t $project_name"
+echo -e "2) Directory of programs: \t\t\t\t\t $mosaik_dir"
+echo -e "3) Directory with genome reference sequence, .fa file: \t\t $refseq_dir"
+echo -e "4) Reads directory: \t\t\t\t\t\t $reads_dir \n\n"
+echo -e "5) Results directory: \t\t\t\t\t\t $results_dir"
+#echo -e "6) Library name (i.e. highline & lowline): \t\t\t $genomes \n\n"
 
 
-echo -e "$txtgrn ################# Assembly-specific settings ############################ $txtrst \n"
-echo -e " P) Processors used for alignment, default 16: \t\t\t\t $txtred$proc$txtrst \t processors"
-echo -e " H) Hash size, single-end default 15: \t\t\t\t\t $txtred$hash_size$txtrst \t hash size"
-echo -e " M) Maximum mismatches allowed, defualt SE 4; defualt MP 6: \t\t $txtred$max_mismatches$txtrst \t mismatches"
-echo -e " N) Maximum hash positions, default 100: \t\t\t\t $txtred$max_hash_pos$txtrst \t max hash positions"
-echo -e " A) Alignment candidate threshold, SE default 20; MP default 25: \t $txtred$algn_thresh$txtrst \t alignment candidate threshold"
-echo -e " B) Smith-Waterman bandwidth , SE default 13; MP default 17: \t\t $txtred$bandwidth$txtrst \t SW bandwidth"
-echo -e " F) Mean fragment length/insert size: \t\t\t\t\t $txtred$mfl$txtrst\t bp mean fragment length"
-echo -e " R) Search radius from mean fragmen length: \t\t\t\t $txtred$radius$txtrst\t bp radius"
+echo -e $txtgrn"################# Assembly-specific settings ############################ $txtrst"
+echo -e "P) Processors used for alignment, default 16: \t\t\t\t $txtred$proc$txtrst \t processors"
+echo -e "H) Hash size, single-end default 15: \t\t\t\t\t $txtred$hash_size$txtrst \t hash size"
+echo -e "J) Maximum hash positions, default 100: \t\t\t\t $txtred$mhp$txtrst \t max hash positions"
+echo -e "\nM) Single-end maximum mismatches allowed, 35bp default 4: \t\t $txtred$SE_mismatches$txtrst \t SE mismatches"
+echo -e "N) Mate-pair/paired-end maximum mismatches allowed, 50bp default 6: \t $txtred$MP_mismatches$txtrst \t MP mismatches" 
+echo -e "\nA) Single-end alignment candidate threshold, SE default 20: \t\t $txtred$SE_act$txtrst \t alignment candidate threshold"
+echo -e "B) Mate-pair/paired-end alignment candidate threshold, MP default 25: \t $txtred$MP_act$txtrst \t alignment candidate threshold"
+echo -e "\nC) Single-end Smith-Waterman bandwidth, SE default 13: \t\t\t $txtred$SE_bandwidth$txtrst \t SW bandwidth"
+echo -e "D) Mate-pair/paired-end Smith-Waterman bandwidth, MP default 17: \t $txtred$MP_bandwidth$txtrst \t SW bandwidth"
+#echo -e "F) Mean fragment length/insert size: \t\t\t\t\t $txtred$mfl$txtrst\t bp mean fragment length"
+#echo -e "R) Search radius from mean fragment length: \t\t\t\t $txtred$radius$txtrst\t bp radius"
 echo
-echo -e " T) Parallel threads created in pipeline steps, default 14: \t\t $txtred$threads$txtrst \t threads"
-echo -e "    JumpDB, Sort, RemoveDuplicates, Merge, Coverage, Assembly \n\n\n"
+echo -e "T) Parallel threads created in pipeline steps, default 14: \t\t $txtred$threads$txtrst \t threads"
+echo -e "   Sort, MarkDuplicates, Text, CallSNP \n\n"
 
 
-echo -e "$txtgrn ################# Settings for SNP calling ############################## $txtrst \n\n"
-echo -e " S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$PSL$txtrst \t calling probabilty"
-echo -e " C) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
-echo -e " D) Minimum required mapping quality for alignment, default 25: \t $txtred$MAQ$txtrst \t mapping quality \n\n"
+echo -e $txtgrn"################# Settings for SNP calling ############################## $txtrst"
+echo -e "S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$PSL$txtrst \t calling probabilty"
+echo -e "C) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
+echo -e "D) Minimum required mapping quality for alignment, default 25: \t\t $txtred$MAQ$txtrst \t mapping quality \n\n"
 
-echo -e "$txtblu ################# Enter choice ############################## $txtrst \n"
-echo -ne "$txtpur Enter corresponding character to update setting.$txtcyn Start analysis with I$txtred, quit with Q: $txtrst"
+echo -e $txtblu"################# Enter choice ############################## $txtrst \n"
+echo -ne $txtpur"Enter corresponding character to update setting.$txtcyn Start analysis with I$txtred, quit with Q: $txtrst"
 
 UpdateSettings
 }
@@ -156,92 +172,107 @@ function UpdateSettings() {
 	do
 		case "$menu_choice" in
 		"1" ) 
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			mosaik_dir=$REPLY
 		;;
 		"2" ) 
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			main_dir=$REPLY
 		;;
 		"3" ) 
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			refseq_dir=$REPLY
 		;;
 		"4" ) 
-			echo -ne "$txtred Enter new value: $txtrst"
-			read
-			results_dir=$REPLY
-		;;
-		"5" ) 
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			reads_dir=$REPLY
 		;;
-		"6" ) 
-			echo -ne "$txtred Enter new value: $txtrst"
+		"5" ) 
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			genomes=$REPLY
+			results_dir=$REPLY
 		;;
+#		"6" ) 
+#			echo -ne $txtred"Enter new value: $txtrst"
+#			read
+#			genomes=$REPLY
+#		;;
 		"P" | "p" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			proc=$REPLY
 		;;
 		"H" | "h" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			hash_size=$REPLY
 		;;
-		"M" | "m" )
-			echo -ne "$txtred Enter new value: $txtrst"
+		"J" | "j" )
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			max_mismatches=$REPLY
+			mhp=$REPLY
+		;;
+		"M" | "m" )
+			echo -ne $txtred"Enter new value: $txtrst"
+			read
+			SE_mismatches=$REPLY
 		;;
 		"N" | "n" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			max_hash_pos=$REPLY
+			MP_mismatches=$REPLY
 		;;
 		"A" | "a" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			algn_thresh=$REPLY
+			SE_act=$REPLY
 		;;
 		"B" | "b" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			bandwidth=$REPLY
+			MP_act=$REPLY
 		;;
-		"F" | "f" )
-			echo -ne "$txtred Enter new value: $txtrst"
+		"C" | "c" )
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			mfl=$REPLY
+			SE_bandwidth=$REPLY
 		;;
-		"R" | "r" )
-			echo -ne "$txtred Enter new value: $txtrst"
+		"D" | "d" )
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			radius=$REPLY
+			MP_bandwidth=$REPLY
 		;;
+#		"F" | "f" )
+#			echo -ne $txtred"Enter new value: $txtrst"
+#			read
+#			mfl=$REPLY
+#		;;
+#		"R" | "r" )
+#			echo -ne $txtred"Enter new value: $txtrst"
+#			read
+#			radius=$REPLY
+#		;;
 		"T" | "t" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			threads=$REPLY
 		;;
 		"S" | "s" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			PSL=$REPLY
 		;;
 		"C" | "c" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			CAL=$REPLY
 		;;
 		"D" | "d" )
-			echo -ne "$txtred Enter new value: $txtrst"
+			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			MAQ=$REPLY
 		;;
@@ -274,53 +305,59 @@ rm -rf $results_dir #2>/dev/null
 ######################## Initialize pipeline #########################
 echo -e "\n\n$txtpur INITIALIZE PIPELINE $txtrst"
 startrun=$SECONDS
-cd $refseq_dir
-list=`ls $refseq_dir/*chr*.fa | awk -F"/" '{print $NF}'`			# gives basename, i.e. chrM.fa or v_chr13.fa
+#cd $refseq_dir
+#list=`ls $refseq_dir/*chr*.fa | awk -F"/" '{print $NF}'`			# gives basename, i.e. chrM.fa or v_chr13.fa
+#list
 cd $main_dir
 mkdir $results_dir 2>/dev/null
 
 # reads=`ls $reads_dir/*.dat`
 
-
+file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filename, used in functions
 
 ############################ Assembly loop ############################
 # Serial execution of process functions
-for file in $list; do
-	start=$SECONDS
-	chromosome=${file%\.*}								# omits file extension
-	mkdir $results_dir/$chromosome 2>/dev/null
-	echo -e "Processing chromosome $chromosome..." | tee -a $main_dir/pipeline.log
+#for file in $list; do
+
+#	chromosome=${file%\.*}								# omits file extension
+#	mkdir $results_dir/$chromosome 2>/dev/null
+
 
 	# Semi-sequential run
 	Build	&					# detachable process
 	BuildCS					# non-detachable process
 	JumpDB 					# dependent on BuildCS
-	wait						# wait for detached function Build to finish before entering for-loop
+#	wait						# wait for detached function Build to finish before entering for-loop
 	
 	for genome in $genomes; do
-		mkdir $results_dir/$chromosome/$genome 2>/dev/null
+		start=$SECONDS
+		echo -e "Processing $genome..." | tee -a $main_dir/pipeline.log
+
+		mkdir $results_dir/$genome 2>/dev/null
 		Align					# NO PARALLEL THREADING
+
+		end=$SECONDS
+		exectime=$((end - start))
+		echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
 	done
 					
-	end=$SECONDS
-	exectime=$((end - start))
-	echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
-done
+#done
 
 
 #################### Alignment manipulation loop ######################
-# RSMCAT, RemoveDuplicates-Sort-Merge-Coverage-Assemble-Text loop
-# Multi-threaded execution of master function RSMCAT - using $threads
+# STM, Sort -> Text -> MarkDuplicates (Merge - > Coverage -> Assemble) loop
+# Multi-threaded execution of master function STM - using $threads
 NUM=0
 QUEUE=""
-for file in $list; do
-	start=$SECONDS
-	chromosome=${file%\.*}
-	echo -e "Alignment manipulation for chromosome $chromosome..." | tee -a $main_dir/pipeline.log
+# for file in $list; do
+
+#	chromosome=${file%\.*}
+
 	for genome in $genomes; do
-		
+		start=$SECONDS
+		echo -e "Alignment manipulation for $genome..." | tee -a $main_dir/pipeline.log		
 		## All alignment manipulation loops run in parallel over $threads
-		RSMCAT & 					# Start and detach process		
+		STM & 					# Start and detach process		
 		PID=$!					# Get PID of process just started
 		queue $PID					# 
 		# Spawn process
@@ -328,11 +365,11 @@ for file in $list; do
 			checkqueue
 			sleep 10
 		done
+		end=$SECONDS
+		exectime=$((end - start))
+		echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
 	done
-	end=$SECONDS
-	exectime=$((end - start))
-	echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
-done
+#done
 
 
 
@@ -341,12 +378,14 @@ done
 # 
 NUM=0
 QUEUE=""
-for file in $list; do
-	start=$SECONDS
-	chromosome=${file%\.*}
-	echo -e "Calling SNPs in chromosome $chromosome..." | tee -a $main_dir/pipeline.log
+#for file in $list; do
+
+#	chromosome=${file%\.*}
+	echo -e "Calling SNPs in $genome..." | tee -a $main_dir/pipeline.log
 	for genome in $genomes; do
-		
+		start=$SECONDS		
+		echo -e "Calling SNPs in $genome..." | tee -a $main_dir/pipeline.log
+
 		## SNP calls in $threads number of threads
 		CallSNP & 					# Start and detach process		
 		PID=$!					# Get PID of process just started
@@ -356,17 +395,17 @@ for file in $list; do
 			checkqueue
 			sleep 10
 		done
+		end=$SECONDS
+		exectime=$((end - start))
+		echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
 	done
-	end=$SECONDS
-	exectime=$((end - start))
-	echo -e "done in $exectime seconds.\n\n" | tee -a $main_dir/pipeline.log
-done
+#done
 
 endrun=$SECONDS
 totaltime=$((endrun - startrun))
 wait								# wait for all SNP calls to finish 
 
-echo -e "$txtylw \n Complete assembly and SNP calling done in $totaltime seconds. \n$txtgrn Run completed. $txtrst \n" | tee -a $main_dir/pipeline.log
+echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. \n$txtgrn Run completed. $txtrst \n" | tee -a $main_dir/pipeline.log
 
 
 
