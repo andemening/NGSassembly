@@ -127,14 +127,14 @@ function DrawMenu {
 echo -e $txtblu"###########################################################################################"
 echo -e "#                                       Menu                                              #"
 echo -e "########################################################################################### $txtrst \n"
-echo -e $txtcyn"Initialize analysis with \t I $txtrst"
+echo -e $txtylw"Initialize analysis with \t I $txtrst"
 echo -e $txtred"Quit program with \t\t Q $txtrst \n"
 
 echo -e $txtgrn"########################### Folder paths ################################ $txtrst"
 echo -e "1) Project name, preferably genome name: \t\t\t $project_name"
 echo -e "2) Directory of programs: \t\t\t\t\t $mosaik_dir"
 echo -e "3) Directory with genome reference sequence, .fa file: \t\t $refseq_dir"
-echo -e "4) Reads directory: \t\t\t\t\t\t $reads_dir \n\n"
+echo -e "4) Reads directory: \t\t\t\t\t\t $reads_dir"
 echo -e "5) Results directory: \t\t\t\t\t\t $results_dir"
 echo -e "6) Library name (i.e. highline & lowline): \t\t\t $lines \n\n"
 #echo -e "7) INDEL calling , default"
@@ -159,8 +159,8 @@ echo -e "   Sort, MarkDuplicates, Text, CallSNP \n\n"
 
 echo -e $txtgrn"################# Settings for SNP calling ############################## $txtrst"
 echo -e "S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$PSL$txtrst \t calling probabilty"
-echo -e "C) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
-echo -e "D) Minimum required mapping quality for alignment, default 25: \t\t $txtred$MAQ$txtrst \t mapping quality \n\n"
+echo -e "R) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
+echo -e "U) Minimum required mapping quality for alignment, default 25: \t\t $txtred$MAQ$txtrst \t mapping quality \n\n"
 
 echo -e $txtblu"################# Enter choice ############################## $txtrst \n"
 echo -ne $txtpur"Enter corresponding character to update setting.$txtcyn Start analysis with I$txtred, quit with Q: $txtrst"
@@ -176,12 +176,12 @@ function UpdateSettings() {
 		"1" ) 
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			mosaik_dir=$REPLY
+			project_name=$REPLY
 		;;
 		"2" ) 
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			main_dir=$REPLY
+			mosaik_dir=$REPLY
 		;;
 		"3" ) 
 			echo -ne $txtred"Enter new value: $txtrst"
@@ -268,12 +268,12 @@ function UpdateSettings() {
 			read
 			PSL=$REPLY
 		;;
-		"C" | "c" )
+		"R" | "r" )
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			CAL=$REPLY
 		;;
-		"D" | "d" )
+		"U" | "u" )
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			MAQ=$REPLY
