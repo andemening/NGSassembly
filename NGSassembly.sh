@@ -55,19 +55,16 @@ project_name="galGal3"							# Project name, preferably the organism genome name
 genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 		# filename of binary archive for sequencing run; NF='number of fields' aka. last field
 lines="high low"
 
-# gallus_high_35_1.dat
-# gallus_high_35_2.dat
-# gallus_high_50.dat
-# gallus_low_35_1.dat
-# gallus_low_35_2.dat
-# gallus_low_50.dat
+# gallus_high_frag_35bp_1.filtered.dat  gallus_high_mate_2x50bp.filtered.dat               gallus_low_frag_35bp_1.filtered.dat  gallus_low_mate_2x50bp.filtered.dat
+# gallus_high_frag_35bp_2.filtered.dat  gallus_high_orphaned_mates_50bp.F3R3.filtered.dat  gallus_low_frag_35bp_2.filtered.dat  gallus_low_orphaned_mates_50bp.F3R3.filtered.dat
+
 
 #------------------- Settings for Mosaik pipeline -----------------------
 proc=16				#Number of processor cores available, -p=16
 #memory=70375828		#Number of hashes to be stored in memory (default=6000000) 
 #QV_filter=20		#Filtering of raw reads, phred scores, >20
 hash_size=15		#Hash size, -hs=15
-mhp=100		#Number of stored hash positions, -mhp=100
+mhp=100			#Number of stored hash positions, -mhp=100
 
 SE_mismatches=4		#Maximum allowed mismatches in read, -mm=4 for single-end, -mm=6 for mate-pairs
 MP_mismatches=6

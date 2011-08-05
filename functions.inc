@@ -278,7 +278,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 
 
 	# no sample names are given -> using name of BAM file as sample name
-	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --ploidy 2 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$file".called.vcf" --log $results_dir/$line".called.log"
+	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy 22 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$file".called.vcf" --log $results_dir/$line".called.log"
 		# -f fasta refseq, $file is current chromosome basename in iteration 		
 		# -v, output file
 		# -log, log filename
