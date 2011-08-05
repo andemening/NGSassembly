@@ -46,12 +46,13 @@ txtrst=$(tput sgr0)       # Text reset
 
 ################### Variables for analysis pipeline #########################
 #------------------- Folder settings -----------------------
-mosaik_dir=~andreas/mosaik-aligner/bin				# Programs bin/ directory, all programs required in same directory
 main_dir=`pwd`								# Main directory is current working directory
+project_name="gallus"							# Project name, preferably the organism genome name, e.g. galGal3
+mosaik_dir=~andreas/NGSprograms				# Programs bin/ directory, all programs required in same directory
 refseq_dir=~/galGal3/refseq						# Directory containing reference sequences
-results_dir=~andreas/galGal3/results				# Directory to store the results
-reads_dir=/home/gallus							# Directory containing reads
-project_name="galGal3"							# Project name, preferably the organism genome name, e.g. galGal3
+results_dir=$main_dir/$project_name/results				# Directory to store the results
+reads_dir=/usr/gallus/binary.reads							# Directory containing reads
+
 genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 		# filename of binary archive for sequencing run; NF='number of fields' aka. last field
 lines="high low"
 
@@ -307,7 +308,7 @@ startrun=$SECONDS
 #cd $refseq_dir
 #list=`ls $refseq_dir/*chr*.fa | awk -F"/" '{print $NF}'`			# gives basename, i.e. chrM.fa or v_chr13.fa
 #list
-cd $main_dir
+#cd $main_dir
 mkdir $results_dir 2>/dev/null
 
 # reads=`ls $reads_dir/*.dat`
