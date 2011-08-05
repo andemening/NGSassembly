@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. functions.inc
+
 ###########################################################
 # Genome assembly pipeline using Mosaik suite of programs #
 # and calling SNPs and short INDELs using FreeBayes       #
@@ -29,8 +31,6 @@
 
 
 
-# Analysis functions
-. functions.inc
 
 ####################### Text color variables ##############################
 txtund=$(tput sgr 0 1)    # Underline
