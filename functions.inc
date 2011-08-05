@@ -107,7 +107,7 @@ function Align {					## Align
 	st=$SECONDS
 	echo -e "\tAligning genome $genome..."
 	
-	read_length=`grep -q "35bp" $file > /dev/null; echo $?`
+	read_length=`grep -q "35bp" $genome > /dev/null; echo $?`
 	if [ "$read_length" -eq "0" ]; then
 		mismatches=$SE_mismatches
 		bandwidth=$SE_bandwidth
@@ -139,7 +139,7 @@ function Sort {					## Sorting, two different approaches for SE and MP
 		
 	st=$SECONDS
 	echo -e "\tSorting aligned reads for $genome..."
-	$mosaik_dir/MosaikSort -in $results_dir/$genome/$file".aligned.dat" -mem 12000000 -nu -afl -sa -rmm -dup -out $results_dir/$genome/$file".aligned.sorted.dat" | tee -a $results_dir/mosaik.log
+	$mosaik_dir/MosaikSort -in $results_dir/$genome/$file".aligned.dat" -mem 8000000 -nu -afl -sa -rmm -out $results_dir/$genome/$file".aligned.sorted.dat" | tee -a $results_dir/mosaik.log
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
 	exectime=$((en - st))
@@ -244,7 +244,7 @@ function STM { 				## These functions run in sequential fashion
 
 function CallSNP {				## Calling SNPs and short INDELS
 	SNPstart=$SECONDS
-	echo -e "\tSNP/INDEL calling in $genome..."
+	echo -e "\tSNP calling in $genome..."
 
 #	# Add read group names with bamaddrg
 #	# This is not required in current analysis of 3 high-line, 3 low-line
@@ -255,26 +255,62 @@ function CallSNP {				## Calling SNPs and short INDELS
 #	bam_files=`find $results/$chromosome -name \*.bam -print`	# lists all bam-files in current chromosome
 #	infiles=""
 #	for sample_name in $bam_files; do
-#		$mosaik_dir/bamaddrg -b $sample_name -s $chromosome -r $genome			# appends each $genome as read group name for for corresponding bam-files
+#		$mosaik_dir/bamaddrg -b $sample_name -s $chromosome -r $genome				# appends each $genome as read group name for for corresponding bam-files
 #		# infiles is string with all input files for bayesian analysis
 #		# $infiles = "-in /complete/path/file1.bam -in /complete/path/file2.bam -in ... "
-#		infiles="$infiles-in $sample_name "								# generate list of bam-files for 
+#		infiles="$infiles-in $sample_name "									# generate list of bam-files for 
 #	done
 
-	bam_files=`find $results/$genome -name \*.Marked.bam -print`	# lists all bam-files in current chromosome AND line
+	
+	bam_files=`find $results -name \*.Marked.bam -print | awk -F "/" '{print $NF}'`	# lists all bam-files in current line
 	infiles=""
 	for merging_name in $bam_files; do
-		infiles="$infiles-in $merging_name "							# generate in variable for merging command
+		$mosaik_dir/bamtools index $results_dir/$merging_name
+		infiles="$infiles-in $merging_name "								# generate in variable for merging command
 	done
 
 	# Pipe entire SNP call command from stdout to stdin; bamtools merge -> bamleftalign -> freebayes
 	# Bamtools merge piped to bamleftalign for homogenization of positional distribution of IN/DELs, computationally inexpensive
 	# bamtools merge xxx | bamleftalign xxx | freebayes --stdin -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -dd --pvar $PSL --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome$/freebayes.merged.leftaligned.log
 
-	# bamleftalign only required for MP reads
+	# bamleftalign only required for MP reads when INDEL calling
+#	$mosaik_dir/bamleftalign -f $refseq_dir/$file/
+
+
+	# no sample names are given -> using name of BAM file as sample name
+	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --ploidy 2 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$file".called.vcf" --log $results_dir/$line".called.log"
+		# -f fasta refseq, $file is current chromosome basename in iteration 		
+		# -v, output file
+		# -log, log filename
+		# --ploidy, default diploid
+		# -d, debugging output
+		# --pvar, reporting probaility limit
+		# --min-coverage, least required coverage to process site
+		# --min-mapping-quality, minimum default 30
+		# --use-mapping-quality
+		# --ignore-reference-allele 
+
+		
+	SNPend=$SECONDS
+	SNPtime=$((SNPend - SNPstart))
+	echo -e "\tSNP calling done in $exectime seconds." | tee -a $main_dir/pipeline.log
+}
+
+
+function CallINDEL {				## Calling SNPs and short INDELS
+	SNPstart=$SECONDS
+	echo -e "\tINDEL calling in $genome..."
+
+	bam_files=`find $results/$genome -name \*.Marked.bam -print`	# lists all bam-files in current line
+	infiles=""
+	for merging_name in $bam_files; do
+		infiles="$infiles-in $merging_name "							# generate in variable for merging command
+	done
+
+	# bamleftalign only required for MP reads when INDEL calling
 	$mosaik_dir/bamleftalign -f $refseq_dir/$genome/
 
-	$mosaik_dir/samtools index $results_dir/$file
+	$mosaik_dir/bamtools index $results_dir/$file
 	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file".fa" --ploidy 2 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$genome/$file".called.vcf" --log $results_dir/$genome
 		# -f fasta refseq, $file is current chromosome basename in iteration 		
 		# -v, output file
@@ -290,10 +326,8 @@ function CallSNP {				## Calling SNPs and short INDELS
 		
 	SNPend=$SECONDS
 	SNPtime=$((SNPend - SNPstart))
-	echo -e "\tSNP/INDEL calling done in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tINDEL calling done in $exectime seconds." | tee -a $main_dir/pipeline.log
 }
-
-
 
 
 ################# Multi-core functions ####################

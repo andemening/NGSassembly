@@ -52,7 +52,8 @@ refseq_dir=~/galGal3/refseq						# Directory containing reference sequences
 results_dir=~andreas/galGal3/results				# Directory to store the results
 reads_dir=/home/gallus							# Directory containing reads
 project_name="galGal3"							# Project name, preferably the organism genome name, e.g. galGal3
-genomes=`ls /usr/gallus/high_MP_2x50bp.HS.208/*.dat | awk -F "/" '{print $NF}'` 		# filename of binary archive for sequencing run; NF='number of fields' aka. last field
+genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 		# filename of binary archive for sequencing run; NF='number of fields' aka. last field
+lines="high low"
 
 # gallus_high_35_1.dat
 # gallus_high_35_2.dat
@@ -135,7 +136,8 @@ echo -e "2) Directory of programs: \t\t\t\t\t $mosaik_dir"
 echo -e "3) Directory with genome reference sequence, .fa file: \t\t $refseq_dir"
 echo -e "4) Reads directory: \t\t\t\t\t\t $reads_dir \n\n"
 echo -e "5) Results directory: \t\t\t\t\t\t $results_dir"
-#echo -e "6) Library name (i.e. highline & lowline): \t\t\t $genomes \n\n"
+echo -e "6) Library name (i.e. highline & lowline): \t\t\t $lines \n\n"
+#echo -e "7) INDEL calling , default"
 
 
 echo -e $txtgrn"################# Assembly-specific settings ############################ $txtrst"
@@ -196,11 +198,11 @@ function UpdateSettings() {
 			read
 			results_dir=$REPLY
 		;;
-#		"6" ) 
-#			echo -ne $txtred"Enter new value: $txtrst"
-#			read
-#			genomes=$REPLY
-#		;;
+		"6" ) 
+			echo -ne $txtred"Enter new value: $txtrst"
+			read
+			lines=$REPLY
+		;;
 		"P" | "p" )
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
@@ -355,7 +357,7 @@ QUEUE=""
 
 	for genome in $genomes; do
 		start=$SECONDS
-		echo -e "Alignment manipulation for $genome..." | tee -a $main_dir/pipeline.log		
+		echo -e "Sorting, converting and marking duplicates for $genome..." | tee -a $main_dir/pipeline.log		
 		## All alignment manipulation loops run in parallel over $threads
 		STM & 					# Start and detach process		
 		PID=$!					# Get PID of process just started
@@ -381,11 +383,15 @@ QUEUE=""
 #for file in $list; do
 
 #	chromosome=${file%\.*}
-	echo -e "Calling SNPs in $genome..." | tee -a $main_dir/pipeline.log
-	for genome in $genomes; do
-		start=$SECONDS		
-		echo -e "Calling SNPs in $genome..." | tee -a $main_dir/pipeline.log
+#	echo -e "Calling SNPs in $genome..." | tee -a $main_dir/pipeline.log
 
+#	lines=`ls $reads_dir/*.dat | awk -F "/" '{print $NF}' | awk -F "_" '{print $2}'`
+	
+	for line in $lines; do
+		start=$SECONDS		
+		echo -e "Calling SNPs in $line line..." | tee -a $main_dir/pipeline.log
+
+		mkdir $results_dir/$line
 		## SNP calls in $threads number of threads
 		CallSNP & 					# Start and detach process		
 		PID=$!					# Get PID of process just started
