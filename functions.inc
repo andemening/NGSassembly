@@ -46,14 +46,14 @@ function Build {					## Create binary file in basespace from genome FASTA file
 		# after quality filtering >20 and mate-pair pairing, 163.00 reads passed out of 338,21 reads total
 		# ~/mosaik-aligner/bin/MosaikBuild -fr gallus_HS_MP_2x50bp_T_mp_F3.csfasta -fq gallus_HS_MP_2x50bp_T_mp_F3_QV.qual -fr2 gallus_HS_MP_2x50bp_T_mp_R3.csfasta -fq2 gallus_HS_MP_2x50bp_T_mp_R3_QV.qual -st solid -ln HIGH_LINE -id HS_MP_2x50bp -ds "gallus high HS 2x50bp mate-pairs" -sn "gallus gallus domesticus" -mfl 400 -out gallus_HS_2x50bp.dat | tee -a build.gallus_HS_2x50bp.log
 
-	echo -e "\tCreating binary file in basespace for $project_name..." | tee -a $main_dir/pipeline.log
+	echo -e "\tCreating binary file in basespace for $project_name..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".dat" | tee -a $results_dir/build.log
 	$mosaik_dir/fixlog $results_dir/build.log
 }
 
 
 function BuildCS {    				## Create binary file in colorspace from genome FASTA file
-	echo -e "\tCreating binary file in colorspace for $project_name..." | tee -a $main_dir/pipeline.log
+	echo -e "\tCreating binary file in colorspace for $project_name..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".cs.dat" -cs | tee -a $results_dir/buildCS.log
 	$mosaik_dir/fixlog $results_dir/buildCS.log
 }
@@ -65,12 +65,12 @@ function JumpDB {					## Create jump database for genome
 		# -mhp 100, maximum hash positions, default 100
 		
 	st=$SECONDS
-	echo -e "\tCreating jumps database for $project_name..." | tee -a $main_dir/pipeline.log
+	echo -e "\tCreating jumps database for $project_name..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikJump -ia $results_dir/$file".cs.dat" -hs $hash_size -mhp $mhp -out $results_dir/$file".jmp" | tee -a $results_dir/mosaik.log
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
 	exectime=$((en - st))
-	echo -e "\tJumps database done in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tJumps database done in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
@@ -105,7 +105,7 @@ function Align {					## Align
 		# ~/mosaik-aligner/bin/MosaikAligner -in /home/gallus/Mosaik1.0_gallus_HS_2x50bp.mfl3528.dat -ia chr2.cs.dat -ibs chr2.dat -a all -m all -hs 15 -p 16 -act 25 -mm 6 -bw 17 -ls 600 -mhp 100 -j chr2.cs.jmp -out results.Mosaik1.0_gallus_HS_2x50bp.mfl3528/chr2.aligned.dat | tee -a results.Mosaik1.0_gallus_HS_2x50bp.mfl3528/aligner.log
 		
 	st=$SECONDS
-	echo -e "\tAligning genome $genome..." | tee -a $main_dir/pipeline.log
+	echo -e "\tAligning genome $genome..." | tee -a $results_dir/pipeline.log
 	
 #	read_length=`grep -q "35bp" $genome > /dev/null; echo $?`
 #	read_length=`grep -q "35bp" $genome > /dev/null`
@@ -136,7 +136,7 @@ function Align {					## Align
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
 	exectime=$((en - st))
-	echo -e "\tAlignment done in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tAlignment done in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
@@ -152,38 +152,35 @@ function Sort {					## Sorting, two different approaches for SE and MP
 		# -dup <Directory>, filters out duplicate reads, DISCARDS reads with lower alignment quality score
 		
 	st=$SECONDS
-	echo -e "\tSorting aligned reads for $genome..." | tee -a $main_dir/pipeline.log
-	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 8000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/mosaik.log
-	$mosaik_dir/fixlog $results_dir/mosaik.log
+	echo -e "\tSorting aligned reads for $genome..." | tee -a $results_dir/pipeline.log
+	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 8000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/$genome/MosaikSort.Text.log
+	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
 	exectime=$((en - st))
-	echo -e "\tSorting done in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tSorting done in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
 function Text {					## Convert assembly archive to BAM file format for analysis in FreeBayes
 	st=$SECONDS
-	eco -e "\tConverting alignment file for $genome to BAM file…" | tee -a $main_dir/pipeline.log
-	$mosaik_dir/MosaikText -in $results_dir$genome/$genome".aligned.sorted.dat" -bam $results_dir/$genome/$genome".aligned.sorted.bam" | tee -a $results_dir/mosaik.log
-	$mosaik_dir/fixlog $results_dir/mosaik.log
+	echo -e "\tConverting alignment file for $genome to BAM file..." | tee -a $results_dir/pipeline.log
+	$mosaik_dir/MosaikText -in $results_dir/$genome/$genome".aligned.sorted.dat" -bam $results_dir/$genome/$genome".aligned.sorted.bam" | tee -a $results_dir/$genome/MosaikSortText.log
+	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
 	exectime=$((en -st))
-	echo -e "\tConversion done in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tConversion done in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
-# Index duplicate reads in database contained in folder (flag -od)
 function MarkDuplicates {			## Remove duplicate PCR products to improve SNP detection
-		# -od, output directory for duplicate database
-		
 	st=$SECONDS
-	echo -e "\tMarking duplicate reads for $genome..." | tee -a $main_dir/pipeline.log
+	echo -e "\tMarking duplicate reads for $genome..." | tee -a $results_dir/pipeline.log
 		# $mosaik_dir/MosaikDupSnoop -in $results_dir/$chromosome/$genome/$chromosome".aligned.dat" -afl -rmm -od $results_dir/$chromosome/"Duplicates"
 		
-	java -d64 -Xmx18G -jar $mosaik_dir/MarkDuplicates.jag INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
+	java -d64 -Xmx18G -jar $mosaik_dir/MarkDuplicates.jar INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
 	en=$SECONDS
 	exectime=$((en - st))
-	echo -e "\tMarked duplicates in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tMarked duplicates in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
@@ -203,7 +200,7 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 #	$mosaik_dir/fixlog $results_dir/merge.coverage.log
 #	en=$SECONDS
 #	exectime=$((en - st))
-#	echo -e "\tMerge done in $exectime seconds." | tee -a $main_dir/pipeline.log
+#	echo -e "\tMerge done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
 
 
@@ -223,7 +220,7 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 #	$mosaik_dir/fixlog $results_dir/merge.coverage.log
 #	en=$SECONDS
 #	exectime=$((en - st))
-#	echo -e "\tPlotting coverage done in $exectime seconds." | tee -a $main_dir/pipeline.log
+#	echo -e "\tPlotting coverage done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
 
 
@@ -239,7 +236,7 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 #	$mosaik_dir/fixlog $results_dir/$chromosome/mosaik.log
 #	en=$SECONDS
 #	exectime=$((en - st))
-#	echo -e "\tAssembly done in $exectime seconds." | tee -a $main_dir/pipeline.log
+#	echo -e "\tAssembly done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
 
 
@@ -258,7 +255,7 @@ function STM { 				## These functions run in sequential fashion
 
 function CallSNP {				## Calling SNPs and short INDELS
 	SNPstart=$SECONDS
-	echo -e "\tSNP calling in $genome..." | tee -a $main_dir/pipeline.log
+	echo -e "\tSNP calling in $genome..." | tee -a $results_dir/pipeline.log
 
 #	# Add read group names with bamaddrg
 #	# This is not required in current analysis of 3 high-line, 3 low-line
@@ -307,7 +304,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 		
 	SNPend=$SECONDS
 	SNPtime=$((SNPend - SNPstart))
-	echo -e "\tSNP calling done in $exectime seconds." | tee -a $main_dir/pipeline.log
+	echo -e "\tSNP calling done in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
@@ -340,7 +337,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 #		
 #	SNPend=$SECONDS
 #	SNPtime=$((SNPend - SNPstart))
-#	echo -e "\tINDEL calling done in $exectime seconds." | tee -a $main_dir/pipeline.log
+#	echo -e "\tINDEL calling done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
 
 

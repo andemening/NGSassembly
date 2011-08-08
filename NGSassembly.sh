@@ -46,11 +46,12 @@ txtrst=$(tput sgr0)       # Text reset
 
 ################### Variables for analysis pipeline #########################
 #------------------- Folder settings -----------------------
+main_dir=`pwd`
 project_name="gallus"								# Project name, preferably the organism genome name, e.g. galGal3
-project_dir=~/$project_name
+
 mosaik_dir=~andreas/NGSprograms						# Programs bin/ directory, all programs required in same directory
 refseq_dir=~/galGal3/refseq							# Directory containing reference sequences
-results_dir=$project_dir/results						# Directory to store the results
+results_dir=$main_dir/$project_name".results"				# Directory to store the results
 reads_dir=/usr/gallus/binary.reads						# Directory containing reads
 
 genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 			# filename of binary archive for sequencing run; NF='number of fields' aka. last field
@@ -331,14 +332,14 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 	
 	for genome in $genomes; do
 		start=$SECONDS
-		echo -e "Processing $genome..." | tee -a $project_dir/pipeline.log
+		echo -e "Processing $genome..." | tee -a $results_dir/pipeline.log
 		mkdir $results_dir/$genome 2>/dev/null
 
 		Align					# utilizes $proc processors
 
 		end=$SECONDS
 		exectime=$((end - start))
-		echo -e "done in $exectime seconds.\n\n" | tee -a $project_dir/pipeline.log
+		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 	done
 					
 #done
@@ -355,7 +356,7 @@ QUEUE=""
 
 	for genome in $genomes; do
 		start=$SECONDS
-		echo -e "Sorting, converting and marking duplicates for $genome..." | tee -a $project_dir/pipeline.log		
+		echo -e "Sorting, converting and marking duplicates for $genome..." | tee -a $results_dir/pipeline.log		
 		## All alignment manipulation loops run in parallel over $threads
 
 		STM & 					# Start and detach process		
@@ -369,7 +370,7 @@ QUEUE=""
 		done
 		end=$SECONDS
 		exectime=$((end - start))
-		echo -e "done in $exectime seconds.\n\n" | tee -a $project_dir/pipeline.log
+		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 	done
 #done
 
@@ -383,13 +384,13 @@ QUEUE=""
 #for file in $list; do
 
 #	chromosome=${file%\.*}
-#	echo -e "Calling SNPs in $genome..." | tee -a $project_dir/pipeline.log
+#	echo -e "Calling SNPs in $genome..." | tee -a $results_dir/pipeline.log
 
 #	lines=`ls $reads_dir/*.dat | awk -F "/" '{print $NF}' | awk -F "_" '{print $2}'`
 	
 	for line in $lines; do
 		start=$SECONDS		
-		echo -e "Calling SNPs in $line line..." | tee -a $project_dir/pipeline.log
+		echo -e "Calling SNPs in $line line..." | tee -a $results_dir/pipeline.log
 
 		mkdir $results_dir/$line
 		## SNP calls in $threads number of threads
@@ -405,7 +406,7 @@ QUEUE=""
 		done
 		end=$SECONDS
 		exectime=$((end - start))
-		echo -e "done in $exectime seconds.\n\n" | tee -a $project_dir/pipeline.log
+		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 	done
 #done
 
@@ -413,7 +414,7 @@ endrun=$SECONDS
 totaltime=$((endrun - startrun))
 wait								# wait for all SNP calls to finish 
 
-echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. \n$txtgrn Run completed. $txtrst \n" | tee -a $project_dir/pipeline.log
+echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. \n$txtgrn Run completed. $txtrst \n" | tee -a $results_dir/pipeline.log
 
 
 
