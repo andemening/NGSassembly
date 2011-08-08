@@ -46,14 +46,14 @@ txtrst=$(tput sgr0)       # Text reset
 
 ################### Variables for analysis pipeline #########################
 #------------------- Folder settings -----------------------
-main_dir=`pwd`								# Main directory is current working directory
-project_name="gallus"							# Project name, preferably the organism genome name, e.g. galGal3
-mosaik_dir=~andreas/NGSprograms				# Programs bin/ directory, all programs required in same directory
-refseq_dir=~/galGal3/refseq						# Directory containing reference sequences
-results_dir=$main_dir/$project_name/results				# Directory to store the results
-reads_dir=/usr/gallus/binary.reads							# Directory containing reads
+#main_dir=`pwd`									# Main directory is current working directory
+project_name="gallus"								# Project name, preferably the organism genome name, e.g. galGal3
+mosaik_dir=~andreas/NGSprograms						# Programs bin/ directory, all programs required in same directory
+refseq_dir=~/galGal3/refseq							# Directory containing reference sequences
+results_dir=~/$project_name/results						# Directory to store the results
+reads_dir=/usr/gallus/binary.reads						# Directory containing reads
 
-genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 		# filename of binary archive for sequencing run; NF='number of fields' aka. last field
+genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 			# filename of binary archive for sequencing run; NF='number of fields' aka. last field
 lines="high low"
 
 # gallus_high_frag_35bp_1.filtered.dat  gallus_high_mate_2x50bp.filtered.dat               gallus_low_frag_35bp_1.filtered.dat  gallus_low_mate_2x50bp.filtered.dat
@@ -61,7 +61,7 @@ lines="high low"
 
 
 #------------------- Settings for Mosaik pipeline -----------------------
-proc=16				#Number of processor cores available, -p=16
+proc=16			#Number of processor cores available, -p=16
 #memory=70375828		#Number of hashes to be stored in memory (default=6000000) 
 #QV_filter=20		#Filtering of raw reads, phred scores, >20
 hash_size=15		#Hash size, -hs=15
@@ -308,7 +308,7 @@ startrun=$SECONDS
 #cd $refseq_dir
 #list=`ls $refseq_dir/*chr*.fa | awk -F"/" '{print $NF}'`			# gives basename, i.e. chrM.fa or v_chr13.fa
 #list
-#cd $main_dir
+mkdir $project_name 2>/dev/null
 mkdir $results_dir 2>/dev/null
 
 # reads=`ls $reads_dir/*.dat`
@@ -332,9 +332,9 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 	for genome in $genomes; do
 		start=$SECONDS
 		echo -e "Processing $genome..." | tee -a $main_dir/pipeline.log
-
 		mkdir $results_dir/$genome 2>/dev/null
-		Align					# NO PARALLEL THREADING
+
+		Align					# utilizes $proc processors
 
 		end=$SECONDS
 		exectime=$((end - start))
@@ -357,7 +357,9 @@ QUEUE=""
 		start=$SECONDS
 		echo -e "Sorting, converting and marking duplicates for $genome..." | tee -a $main_dir/pipeline.log		
 		## All alignment manipulation loops run in parallel over $threads
+
 		STM & 					# Start and detach process		
+
 		PID=$!					# Get PID of process just started
 		queue $PID					# 
 		# Spawn process
@@ -391,7 +393,9 @@ QUEUE=""
 
 		mkdir $results_dir/$line
 		## SNP calls in $threads number of threads
+
 		CallSNP & 					# Start and detach process		
+
 		PID=$!					# Get PID of process just started
 		queue $PID					# 
 		# Spawn process
