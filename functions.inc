@@ -153,7 +153,7 @@ function Sort {					## Sorting, two different approaches for SE and MP
 		
 	st=$SECONDS
 	echo -e "\tSorting aligned reads for $genome..." | tee -a $results_dir/pipeline.log
-	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 8000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/$genome/MosaikSort.Text.log
+	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 36000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/$genome/MosaikSort.Text.log
 	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
 	exectime=$((en - st))

@@ -75,18 +75,16 @@ MP_act=25
 SE_bandwidth=13		#Bandwith for banded Smith-Waterman algorithm, -bw=13 for single-end; -bw=17 for mate-pairs
 MP_bandwidth=17
 
-mfl=3500			#Mean fragment length in bp for mate-pairs
-#MMP=15			#Threshold for alignment quality
+mfl=3528			#Mean fragment length in bp for mate-pairs
 radius=4000			#Search radius from mfl in bp
-threads=14			#Parallel run threads in pipeline steps - Jump, Sort, DupSnoop, Merge, Coverage, Assembly
+threads=2
+#threads=`echo $lines | wc -w`
 
 #------------------- Settings for SNP calling -----------------------
 PSL=0.5			#SNP calling probability threshold
 CAL=3				#SNP calling minimum number of reads
 MAQ=25			#MAQ mapping alignment quality
 #CRU=100			#Upper coverage limit for SNP calling
-#snp_proc=34		#Number of processors available for SNP calling = maximum threads created, 34 chromosomes do all at same time
-
 
 ######################## Script functions ################################
 Pause() {
