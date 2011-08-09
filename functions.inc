@@ -153,7 +153,9 @@ function Sort {					## Sorting, two different approaches for SE and MP
 		
 	st=$SECONDS
 	echo -e "\tSorting aligned reads for $genome..." | tee -a $results_dir/pipeline.log
-	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 36000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/$genome/MosaikSort.Text.log
+	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 108000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/$genome/MosaikSort.Text.log
+	rm -rf $results_dir/$genome/$genome".aligned.dat" 2>/dev/null
+	rm -rf /tmp/*.tmp 2>/dev/null
 	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
 	exectime=$((en - st))
@@ -165,6 +167,7 @@ function Text {					## Convert assembly archive to BAM file format for analysis 
 	st=$SECONDS
 	echo -e "\tConverting alignment file for $genome to BAM file..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikText -in $results_dir/$genome/$genome".aligned.sorted.dat" -bam $results_dir/$genome/$genome".aligned.sorted.bam" | tee -a $results_dir/$genome/MosaikSort.Text.log
+	rm -rf $results_dir/$genome/$genome".aligned.sorted.dat" 2>/dev/null
 	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
 	exectime=$((en -st))
@@ -177,7 +180,8 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 	echo -e "\tMarking duplicate reads for $genome..." | tee -a $results_dir/pipeline.log
 		# $mosaik_dir/MosaikDupSnoop -in $results_dir/$chromosome/$genome/$chromosome".aligned.dat" -afl -rmm -od $results_dir/$chromosome/"Duplicates"
 		
-	java -d64 -Xmx18G -jar $mosaik_dir/MarkDuplicates.jar INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
+	java -d64 -Xmx18G -jar $mosaik_dir/MarkDuplicates.jar INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
+	rm -rf $results_dir/$genome/$genome".aligned.sorted.bam" 2>/dev/null
 	en=$SECONDS
 	exectime=$((en - st))
 	echo -e "\tMarked duplicates in $exectime seconds." | tee -a $results_dir/pipeline.log
@@ -282,14 +286,14 @@ function CallSNP {				## Calling SNPs and short INDELS
 
 	# Pipe entire SNP call command from stdout to stdin; bamtools merge -> bamleftalign -> freebayes
 	# Bamtools merge piped to bamleftalign for homogenization of positional distribution of IN/DELs, computationally inexpensive
-	# bamtools merge xxx | bamleftalign xxx | freebayes --stdin -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -dd --pvar $PSL --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome$/freebayes.merged.leftaligned.log
+	# bamtools merge xxx | bamleftalign xxx | freebayes --stdin -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -dd --pvar $poly_prob --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome$/freebayes.merged.leftaligned.log
 
 	# bamleftalign only required for MP reads when INDEL calling
 #	$mosaik_dir/bamleftalign -f $refseq_dir/$file/
 
 
 	# no sample names are given -> using name of BAM file as sample name
-	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy 22 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf" --log $results_dir/$line".called.log"
+	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy 22 -dd --pvar $poly_prob --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf" --log $results_dir/$line".called.log"
 		# -f fasta refseq, $file is current chromosome basename in iteration 		
 		# -v, output file
 		# -log, log filename
@@ -322,7 +326,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 #	$mosaik_dir/bamleftalign -f $refseq_dir/$genome/
 #
 #	$mosaik_dir/bamtools index $results_dir/$file
-#	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file".fa" --ploidy 2 -dd --pvar $PSL --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$genome/$file".called.vcf" --log $results_dir/$genome
+#	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file".fa" --ploidy 2 -dd --pvar $poly_prob --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$genome/$file".called.vcf" --log $results_dir/$genome
 #		# -f fasta refseq, $file is current chromosome basename in iteration 		
 #		# -v, output file
 #		# -log, log filename

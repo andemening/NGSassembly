@@ -81,7 +81,7 @@ threads=2
 #threads=`echo $lines | wc -w`
 
 #------------------- Settings for SNP calling -----------------------
-PSL=0.5			#SNP calling probability threshold
+poly_prob=0.0001			#Polymorphism probability threshold
 CAL=3				#SNP calling minimum number of reads
 MAQ=25			#MAQ mapping alignment quality
 #CRU=100			#Upper coverage limit for SNP calling
@@ -155,7 +155,7 @@ echo -e "   Sort, MarkDuplicates, Text, CallSNP \n\n"
 
 
 echo -e $txtgrn"################# Settings for SNP calling ############################## $txtrst"
-echo -e "S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$PSL$txtrst \t calling probabilty"
+echo -e "S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$poly_prob$txtrst \t calling probabilty"
 echo -e "R) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
 echo -e "U) Minimum required mapping quality for alignment, default 25: \t\t $txtred$MAQ$txtrst \t mapping quality \n\n"
 
@@ -263,7 +263,7 @@ function UpdateSettings() {
 		"S" | "s" )
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
-			PSL=$REPLY
+			poly_prob=$REPLY
 		;;
 		"R" | "r" )
 			echo -ne $txtred"Enter new value: $txtrst"
@@ -300,6 +300,7 @@ DrawMenu
 # Clean results dir, all sub-directories and log-files removed 
 #rm -rf $results_dir #2>/dev/null
 #rm *.log 2>/dev/null
+#rm -rf /tmp/*.tmp 2>/dev/null
 
 ######################## Initialize pipeline #########################
 echo -e "\n\n$txtpur INITIALIZE PIPELINE $txtrst"
