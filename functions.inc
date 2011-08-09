@@ -46,14 +46,14 @@ function Build {					## Create binary file in basespace from genome FASTA file
 		# after quality filtering >20 and mate-pair pairing, 163.00 reads passed out of 338,21 reads total
 		# ~/mosaik-aligner/bin/MosaikBuild -fr gallus_HS_MP_2x50bp_T_mp_F3.csfasta -fq gallus_HS_MP_2x50bp_T_mp_F3_QV.qual -fr2 gallus_HS_MP_2x50bp_T_mp_R3.csfasta -fq2 gallus_HS_MP_2x50bp_T_mp_R3_QV.qual -st solid -ln HIGH_LINE -id HS_MP_2x50bp -ds "gallus high HS 2x50bp mate-pairs" -sn "gallus gallus domesticus" -mfl 400 -out gallus_HS_2x50bp.dat | tee -a build.gallus_HS_2x50bp.log
 
-	echo -e "\tCreating binary file in basespace for $project_name..." | tee -a $results_dir/pipeline.log
+	echo -e "\tCreating binary file in basespace for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".dat" | tee -a $results_dir/build.log
 	$mosaik_dir/fixlog $results_dir/build.log
 }
 
 
 function BuildCS {    				## Create binary file in colorspace from genome FASTA file
-	echo -e "\tCreating binary file in colorspace for $project_name..." | tee -a $results_dir/pipeline.log
+	echo -e "\tCreating binary file in colorspace for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".cs.dat" -cs | tee -a $results_dir/buildCS.log
 	$mosaik_dir/fixlog $results_dir/buildCS.log
 }
@@ -65,8 +65,8 @@ function JumpDB {					## Create jump database for genome
 		# -mhp 100, maximum hash positions, default 100
 		
 	st=$SECONDS
-	echo -e "\tCreating jumps database for $project_name..." | tee -a $results_dir/pipeline.log
-	$mosaik_dir/MosaikJump -ia $results_dir/$file".cs.dat" -hs $hash_size -mhp $mhp -out $results_dir/$file".jmp" | tee -a $results_dir/mosaik.log
+	echo -e "\tCreating jumps database for $genome..." | tee -a $results_dir/pipeline.log
+	$mosaik_dir/MosaikJump -ia $results_dir/$file".cs.dat" -hs $hash_size -mhp $mhp -mem 36 -out $results_dir/$file".jmp" | tee -a $results_dir/mosaik.log
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
 	exectime=$((en - st))
@@ -164,7 +164,7 @@ function Sort {					## Sorting, two different approaches for SE and MP
 function Text {					## Convert assembly archive to BAM file format for analysis in FreeBayes
 	st=$SECONDS
 	echo -e "\tConverting alignment file for $genome to BAM file..." | tee -a $results_dir/pipeline.log
-	$mosaik_dir/MosaikText -in $results_dir/$genome/$genome".aligned.sorted.dat" -bam $results_dir/$genome/$genome".aligned.sorted.bam" | tee -a $results_dir/$genome/MosaikSortText.log
+	$mosaik_dir/MosaikText -in $results_dir/$genome/$genome".aligned.sorted.dat" -bam $results_dir/$genome/$genome".aligned.sorted.bam" | tee -a $results_dir/$genome/MosaikSort.Text.log
 	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
 	exectime=$((en -st))

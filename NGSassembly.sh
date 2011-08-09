@@ -309,7 +309,7 @@ startrun=$SECONDS
 #cd $refseq_dir
 #list=`ls $refseq_dir/*chr*.fa | awk -F"/" '{print $NF}'`			# gives basename, i.e. chrM.fa or v_chr13.fa
 #list
-mkdir $project_name 2>/dev/null
+#mkdir $project_name 2>/dev/null
 mkdir $results_dir 2>/dev/null
 
 # reads=`ls $reads_dir/*.dat`
@@ -348,8 +348,8 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 #################### Alignment manipulation loop ######################
 # STM, Sort -> Text -> MarkDuplicates (Merge - > Coverage -> Assemble) loop
 # Multi-threaded execution of master function STM - using $threads
-NUM=0
-QUEUE=""
+#NUM=0
+#QUEUE=""
 # for file in $list; do
 
 #	chromosome=${file%\.*}
@@ -359,15 +359,18 @@ QUEUE=""
 		echo -e "Sorting, converting and marking duplicates for $genome..." | tee -a $results_dir/pipeline.log		
 		## All alignment manipulation loops run in parallel over $threads
 
-		STM & 					# Start and detach process		
+		Sort
+		Text
+		MarkDuplicates
 
-		PID=$!					# Get PID of process just started
-		queue $PID					# 
-		# Spawn process
-		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
-			checkqueue
-			sleep 10
-		done
+# 		STM & 					# Start and detach process		
+#		PID=$!					# Get PID of process just started
+#		queue $PID					# 
+#		# Spawn process
+#		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
+#			checkqueue
+#			sleep 10
+#		done
 		end=$SECONDS
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
