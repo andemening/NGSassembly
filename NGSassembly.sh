@@ -3,11 +3,11 @@
 . functions.inc
 
 ###########################################################
-# Genome assembly pipeline using Mosaik suite of programs #
-# and calling SNPs and short INDELs using FreeBayes       #
+# Genome assembly pipeline using Marthlab Mosaik suite of #
+# programs, SNP calling using FreeBayes                   #
 # Automated and interactive bash script using multiple    #
-# threads, analysis done chromosome by chromosome         #
-# Script by Marcin Kierczak                               #
+# threads and large amount of RAM                         #
+# Script originally by Marcin Kierczak                    #
 # Marcin.Kierczak@hgen.slu.se, date: 18.05.2010           #
 # Modified and expanded by: Andreas.E.Lundberg@gmail.com  #
 # Date: 14.07.2011                                        #
@@ -15,21 +15,11 @@
 
 # Genome assembly pipeline using Mosaik suite of programs and SNP calling with FreeBayes
 # Automated and interactive bash script using multiple threads for speed
-#
-# Program assembles one chromosome at a time from individual chromosome fasta files. \n
-# Generates individual chromosome directory in results directory.
-# First set up working directories and pipeline variables !!
 # Alignment is done in linear processing fashion using multiple cores.
-# All other steps are run IN PARALLEL utilizing user selectible number of threads.
-# SNP calling done 'en masse', all processes run at same time.
+#
+# First set up working directories and pipeline variables
 # This analysis pipeline requires a lot of disk space.
 # Make sure paths are set correctly as script will replace existing results directory
-
-
-
-
-
-
 
 
 ####################### Text color variables ##############################
@@ -81,10 +71,11 @@ threads=2
 #threads=`echo $lines | wc -w`
 
 #------------------- Settings for SNP calling -----------------------
-poly_prob=0.0001			#Polymorphism probability threshold
+poly_prob=0.001		#Polymorphism probability threshold
 CAL=3				#SNP calling minimum number of reads
-MAQ=25			#MAQ mapping alignment quality
-#CRU=100			#Upper coverage limit for SNP calling
+MAQ=15			#MAQ mapping alignment quality
+BAQ=15			#BAQ base quality
+ploidy=22			#For 11 diploid individuals in pool (e.g. high or low) this number is 22
 
 ######################## Script functions ################################
 Pause() {
@@ -93,31 +84,29 @@ Pause() {
 
 function Presentation {
 # Presentation output
-echo -e "$txtgrn########################################################"
-echo -e "# A script for running Mosaik Assembler pipeline"
-echo -e "# and calling SNPs and short indels using GigaBayes"
-echo -e "# chromosome by chromosome for SOLiD mate pairs"
-echo -e "# Author: Marcin.Kierczak@hgen.slu.se"
-echo -e "# Written: 18.05.2010"
-echo -e "# -------------------------------------------------"
-echo -e "# Modified and expanded"
-echo -e "# Co-author: Andreas.E.Lundberg@gmail.com"
-echo -e "# GitHub repo: git://github.com/Papegoja/NGSassembly.git"
-echo -e "# Date: 13.07.2011"
-echo -e "######################################################## $txtrst \n"
+echo -e "$txtgrn###############################################################"
+echo -e "# Bash script for running Mosaik Assembly pipeline            #"
+echo -e "# and calling SNPs and short indels using FreeBayes           #"
+echo -e "# whole genome assembly                                       #"
+echo -e "# Author: Marcin.Kierczak@hgen.slu.se                         #"
+echo -e "# Written: 18.05.2010                                         #"
+echo -e "# ----------------------------------------------------------- #"
+echo -e "# Modified and expanded                                       #"
+echo -e "# Co-author: Andreas.E.Lundberg@gmail.com                     #"
+echo -e "# GitHub repo: git://github.com/Papegoja/NGSassembly.git      #"
+echo -e "# Date: 13.07.2011                                            #"
+echo -e "############################################################### $txtrst \n"
 
-echo -e $txtylw"Program assembles genome from concatenated chromosome fasta files. First set up working directories and pipeline variables. \n"
-#echo -e "First set up working directories and pipeline variables. "
-echo -e "Alignment is done in linear processing fashion using multiple cores. All other steps are run IN PARALLEL utilizing user selectible number of threads. "
-#echo -e "All other steps are run IN PARALLEL utilizing user selectible number of threads. "
-echo -e "SNP calling is done in streaming fashion after merging of lines. "
-#echo -e ""
+echo -e $txtylw"Program assembles genome from concatenated chromosome fasta files. First set up working directories and pipeline variables. "
+echo -e "Originally written for SOLiD reads taking two different read lengths into account, 35bp fragment and 2x50bp mate-pair runs. "
+echo -e "Alignment is done in linear processing fashion using multiple cores. Other steps are run in parallel. "
+echo -e "SNP calling is done in streaming fashion after merging of lines. Alignments are sorted and converted to BAM file format. "
+echo -e "BAM files are processed and duplicate reads are marked using Picard MarkDuplicates. "
+echo -e "Read-groups and sample names added to files using bamaddrg and streamed to FreeBayes for SNP calling. "
 echo -e "This analysis pipeline requires a lot of disk space. $txtredMake sure paths are set correctly as script will replace existing results directory. "
-#echo -e $txtred"Make sure paths are set correctly as script will replace existing results directory !!"
 echo -e "All programs need to reside in same directory !! $txtrst"
 echo -e $txtylw"The reads files are processed from reads directory using list *.dat command $txtrst"
-echo -e $txtred"\nThe read length followed by bp (e.g. 35bp or 50 bp) must be contained in the binary read archive name. \n\n"
-
+echo -e $txtred"The read length followed by bp (e.g. \"35bp\" or \"50bp\") must be contained in the binary read archive name. \n\n"
 }
 
 function DrawMenu {
@@ -132,8 +121,8 @@ echo -e "1) Project name, preferably genome name: \t\t\t $project_name"
 echo -e "2) Directory of programs: \t\t\t\t\t $mosaik_dir"
 echo -e "3) Directory with genome reference sequence, .fa file: \t\t $refseq_dir"
 echo -e "4) Reads directory: \t\t\t\t\t\t $reads_dir"
-echo -e "5) Results directory: \t\t\t\t\t\t $results_dir"
-echo -e "6) Library name (i.e. highline & lowline): \t\t\t $lines \n\n"
+echo -e "5) Results directory: \t\t\t\t\t\t $results_dir \n"
+echo -e "   Library names: \t\t\t\t\t\t $lines \n\n"
 #echo -e "7) INDEL calling , default"
 
 
@@ -157,7 +146,9 @@ echo -e "   Sort, MarkDuplicates, Text, CallSNP \n\n"
 echo -e $txtgrn"################# Settings for SNP calling ############################## $txtrst"
 echo -e "S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$poly_prob$txtrst \t calling probabilty"
 echo -e "R) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
-echo -e "U) Minimum required mapping quality for alignment, default 25: \t\t $txtred$MAQ$txtrst \t mapping quality \n\n"
+echo -e "U) Minimum required mapping quality for alignment, default 15: \t\t $txtred$MAQ$txtrst \t mapping quality"
+echo -e "V) Minimum required base quality for sequencing read, default 15: \t $txtred$BAQ$txtrst \t base quality"
+echo -e "W) Ploidy for pooled samples, total number of alleles in each pool: \t $txtred$ploidy$txtrst \t mapping quality \n\n"
 
 echo -e $txtblu"################# Enter choice ############################## $txtrst \n"
 echo -ne $txtpur"Enter corresponding character to update setting.$txtcyn Start analysis with I$txtred, quit with Q: $txtrst"
@@ -275,6 +266,16 @@ function UpdateSettings() {
 			read
 			MAQ=$REPLY
 		;;
+		"V" | "v" )
+			echo -ne $txtred"Enter new value: $txtrst"
+			read
+			BAQ=$REPLY
+		;;
+		"W" | "w" )
+			echo -ne $txtred"Enter new value: $txtrst"
+			read
+			ploidy=$REPLY
+		;;
 		"Q" | "q" )
 			echo
 			exit 0
@@ -315,20 +316,14 @@ mkdir $results_dir 2>/dev/null
 
 file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filename, used in functions
 
+
 ############################ Assembly loop ############################
-# Serial execution of process functions
-#for file in $list; do
-
-#	chromosome=${file%\.*}								# omits file extension
-#	mkdir $results_dir/$chromosome 2>/dev/null
-
 
 	# Semi-sequential run
 	Build	&					# detachable process
 	BuildCS					# non-detachable process
 	JumpDB 					# dependent on BuildCS
-#	wait						# wait for detached function Build to finish before entering for-loop
-	
+
 	for genome in $genomes; do
 		start=$SECONDS
 		echo -e "Processing $genome..." | tee -a $results_dir/pipeline.log
@@ -340,18 +335,10 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 	done
-					
-#done
 
 
 #################### Alignment manipulation loop ######################
 # STM, Sort -> Text -> MarkDuplicates (Merge - > Coverage -> Assemble) loop
-# Multi-threaded execution of master function STM - using $threads
-#NUM=0
-#QUEUE=""
-# for file in $list; do
-
-#	chromosome=${file%\.*}
 
 	for genome in $genomes; do
 		start=$SECONDS
@@ -362,25 +349,16 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 		Text
 		MarkDuplicates
 
-# 		STM & 					# Start and detach process		
-#		PID=$!					# Get PID of process just started
-#		queue $PID					# 
-#		# Spawn process
-#		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
-#			checkqueue
-#			sleep 10
-#		done
 		end=$SECONDS
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 	done
-#done
-
 
 
 ############################# SNP calling loop ################################
 # Multi-threaded SNP calling, high- and low-line calling done separately
-# 
+
+# left over remnants from chromosome by chromosome parallel execution 
 NUM=0
 QUEUE=""
 #for file in $list; do
