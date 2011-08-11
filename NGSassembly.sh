@@ -135,12 +135,11 @@ echo -e "N) Mate-pair/paired-end maximum mismatches allowed, 50bp default 6: \t 
 echo -e "\nA) Single-end alignment candidate threshold, SE default 20: \t\t $txtred$SE_act$txtrst \t alignment candidate threshold"
 echo -e "B) Mate-pair/paired-end alignment candidate threshold, MP default 25: \t $txtred$MP_act$txtrst \t alignment candidate threshold"
 echo -e "\nC) Single-end Smith-Waterman bandwidth, SE default 13: \t\t\t $txtred$SE_bandwidth$txtrst \t SW bandwidth"
-echo -e "D) Mate-pair/paired-end Smith-Waterman bandwidth, MP default 17: \t $txtred$MP_bandwidth$txtrst \t SW bandwidth"
+echo -e "D) Mate-pair/paired-end Smith-Waterman bandwidth, MP default 17: \t $txtred$MP_bandwidth$txtrst \t SW bandwidth \n\n"
 #echo -e "F) Mean fragment length/insert size: \t\t\t\t\t $txtred$mfl$txtrst\t bp mean fragment length"
 #echo -e "R) Search radius from mean fragment length: \t\t\t\t $txtred$radius$txtrst\t bp radius"
-echo
-echo -e "T) Parallel threads created in pipeline steps, default 14: \t\t $txtred$threads$txtrst \t threads"
-echo -e "   Sort, MarkDuplicates, Text, CallSNP \n\n"
+#echo -e "T) Parallel threads created in pipeline steps, default 14: \t\t $txtred$threads$txtrst \t threads"
+#echo -e "   Sort, MarkDuplicates, Text, CallSNP \n\n"
 
 
 echo -e $txtgrn"################# Settings for SNP calling ############################## $txtrst"
@@ -330,7 +329,6 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 		mkdir $results_dir/$genome 2>/dev/null
 
 		Align					# utilizes $proc processors
-		wait 6 
 		
 		end=$SECONDS
 		exectime=$((end - start))
@@ -347,11 +345,8 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 		## All alignment manipulation loops run in parallel over $threads
 
 		Sort
-		wait 2
 		Text
-		wait 2
 		MarkDuplicates
-		wait 2
 		
 		end=$SECONDS
 		exectime=$((end - start))
@@ -374,9 +369,9 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 	
 #	for line in $lines; do
 		start=$SECONDS		
-		echo -e "Calling SNPs in $line line..." | tee -a $results_dir/pipeline.log
+		echo -e "Calling SNPs between lines in $project_name..." | tee -a $results_dir/pipeline.log
 
-		mkdir $results_dir/$line
+		mkdir $results_dir/SNPcalling
 		## SNP calls in $threads number of threads
 
 		CallSNP & 					# Start and detach process		
