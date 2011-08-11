@@ -50,7 +50,6 @@ function Build {					## Create binary file in basespace from genome FASTA file
 
 	echo -e "\tCreating binary file in basespace for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".dat" | tee -a $results_dir/build.log
-	wait 2
 	$mosaik_dir/fixlog $results_dir/build.log
 }
 
@@ -58,7 +57,6 @@ function Build {					## Create binary file in basespace from genome FASTA file
 function BuildCS {    				## Create binary file in colorspace from genome FASTA file
 	echo -e "\tCreating binary file in colorspace for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".cs.dat" -cs | tee -a $results_dir/buildCS.log
-	wait 2
 	$mosaik_dir/fixlog $results_dir/buildCS.log
 }
 
@@ -71,7 +69,6 @@ function JumpDB {					## Create jump database for genome
 	st=$SECONDS
 	echo -e "\tCreating jumps database for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikJump -ia $results_dir/$file".cs.dat" -hs $hash_size -mhp $mhp -mem 36 -out $results_dir/$file".jmp" | tee -a $results_dir/mosaik.log
-	wait 2
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
 	exectime=$((en - st))
@@ -126,7 +123,6 @@ function Align {					## Align
 	esac
 
 	$mosaik_dir/MosaikAligner -in $reads_dir/$genome -ia $results_dir/$file".cs.dat" -ibs $results_dir/$file".dat" -hs $hash_size -mm $mismatches -bw $bandwidth -act $act -mhp $mhp -m all -a all -p $proc -out $results_dir/$genome/$genome".aligned.dat" -j $results_dir/$file".jmp" | tee -a $results_dir/mosaik.log
-	wait 6
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
 	exectime=$((en - st))
@@ -148,7 +144,6 @@ function Sort {					## Sorting, two different approaches for SE and MP
 	st=$SECONDS
 	echo -e "\tSorting aligned reads for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikSort -in $results_dir/$genome/$genome".aligned.dat" -mem 108000000 -nu -afl -sa -rmm -out $results_dir/$genome/$genome".aligned.sorted.dat" | tee -a $results_dir/$genome/MosaikSort.Text.log
-	wait 5
 	rm -rf $results_dir/$genome/$genome".aligned.dat" 2>/dev/null
 	rm -rf /tmp/*.tmp 2>/dev/null
 	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
@@ -162,7 +157,6 @@ function Text {					## Convert assembly archive to BAM file format for analysis 
 	st=$SECONDS
 	echo -e "\tConverting alignment file for $genome to BAM file..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikText -in $results_dir/$genome/$genome".aligned.sorted.dat" -bam $results_dir/$genome/$genome".aligned.sorted.bam" | tee -a $results_dir/$genome/MosaikSort.Text.log
-	wait 3
 	rm -rf $results_dir/$genome/$genome".aligned.sorted.dat" 2>/dev/null
 	$mosaik_dir/fixlog $results_dir/$genome/MosaikSort.Text.log
 	en=$SECONDS
@@ -177,7 +171,6 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 		# $mosaik_dir/MosaikDupSnoop -in $results_dir/$chromosome/$genome/$chromosome".aligned.dat" -afl -rmm -od $results_dir/$chromosome/"Duplicates"
 		
 	java -d64 -Xmx18G -jar $mosaik_dir/MarkDuplicates.jar INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
-	wait 5
 	rm -rf $results_dir/$genome/$genome".aligned.sorted.bam" 2>/dev/null
 	en=$SECONDS
 	exectime=$((en - st))
@@ -304,7 +297,6 @@ function CallSNP {				## Calling SNPs and short INDELS
 #		$mosaik_dir/bamtools index $results_dir/$merging_name
 	done
 	$mosaik_dir/bamaddrg $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob -0 --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf"
-	wait 2
 
 	# WRONG?? no sample names are given -> using name of BAM file as sample name
 #	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob --min-coverage $CAL --min-mapping-quality $MAQ --min-base-quality $BAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf" --log $results_dir/$line".called.log"

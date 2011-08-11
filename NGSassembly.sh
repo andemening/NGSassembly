@@ -330,7 +330,8 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 		mkdir $results_dir/$genome 2>/dev/null
 
 		Align					# utilizes $proc processors
-
+		wait 6 
+		
 		end=$SECONDS
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
@@ -346,9 +347,12 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 		## All alignment manipulation loops run in parallel over $threads
 
 		Sort
+		wait 2
 		Text
+		wait 2
 		MarkDuplicates
-
+		wait 2
+		
 		end=$SECONDS
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
@@ -359,8 +363,8 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 # Multi-threaded SNP calling, high- and low-line calling done separately
 
 # left over remnants from chromosome by chromosome parallel execution 
-NUM=0
-QUEUE=""
+#NUM=0
+#QUEUE=""
 #for file in $list; do
 
 #	chromosome=${file%\.*}
@@ -368,7 +372,7 @@ QUEUE=""
 
 #	lines=`ls $reads_dir/*.dat | awk -F "/" '{print $NF}' | awk -F "_" '{print $2}'`
 	
-	for line in $lines; do
+#	for line in $lines; do
 		start=$SECONDS		
 		echo -e "Calling SNPs in $line line..." | tee -a $results_dir/pipeline.log
 
@@ -377,22 +381,22 @@ QUEUE=""
 
 		CallSNP & 					# Start and detach process		
 
-		PID=$!					# Get PID of process just started
-		queue $PID					# 
-		# Spawn process
-		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
-			checkqueue
-			sleep 10
-		done
+#		PID=$!					# Get PID of process just started
+#		queue $PID					# 
+#		# Spawn process
+#		while [ $NUM -ge $threads ]; do 	# If $NUM is greater or equal to $threads check and regenerate queue
+#			checkqueue
+#			sleep 10
+#		done
+
 		end=$SECONDS
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
-	done
+#	done
 #done
 
 endrun=$SECONDS
 totaltime=$((endrun - startrun))
-wait								# wait for all SNP calls to finish 
 
 echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. \n$txtgrn Run completed. $txtrst \n" | tee -a $results_dir/pipeline.log
 
