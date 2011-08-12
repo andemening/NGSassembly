@@ -171,9 +171,12 @@ function Text {					## Convert assembly archive to BAM file format for analysis 
 function MarkDuplicates {			## Remove duplicate PCR products to improve SNP detection
 	st=$SECONDS
 	echo -e "\tMarking duplicate reads for $genome..." | tee -a $results_dir/pipeline.log
-		# $mosaik_dir/MosaikDupSnoop -in $results_dir/$chromosome/$genome/$chromosome".aligned.dat" -afl -rmm -od $results_dir/$chromosome/"Duplicates"
+		# -Xms, initial (start) java heap size
+		# -Xmx, maximum java heap size 
+		# MAX_RECORDS_IN_RAM=10M reads, for ~100bp reads set 250k reads per 1GB RAM, 50 * 250k ~= 13M
 		
-	java -d64 -Xmx18G -jar $mosaik_dir/MarkDuplicates.jar INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
+		
+	java -d64 -Xmx56G -Xms50G -jar $mosaik_dir/MarkDuplicates.jar MAX_RECORDS_IN_RAM=18 000 000 INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
 	sleep 2
 	rm -rf $results_dir/$genome/$genome".aligned.sorted.bam" 2>/dev/null
 	en=$SECONDS
@@ -265,7 +268,8 @@ function CallSNP {				## Calling SNPs and short INDELS
 		# --min-mapping-quality
 		# --min-base-quality
 		# --use-mapping-quality
-		# --ignore-reference-allele 
+		# --ignore-reference-allele
+		# --use-duplicate-reads, DO NOT USE
 
 	SNPstart=$SECONDS
 	echo -e "\tSNP calling in $genome..." | tee -a $results_dir/pipeline.log
