@@ -295,7 +295,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 				infiles="$infiles -b $merging_name -s HIGHline -r $RG_basename"
 				;;
 			*"low"*)
-				infiles="$infiles -b $merging_name -s HIGHline -r $RG_basename"
+				infiles="$infiles -b $merging_name -s LOWline -r $RG_basename"
 				;;
 		esac
 #		$mosaik_dir/bamtools index $results_dir/$merging_name

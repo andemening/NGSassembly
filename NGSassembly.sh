@@ -44,7 +44,6 @@ refseq_dir=~/galGal3/refseq							# Directory containing reference sequences
 results_dir=$main_dir/$project_name".results"				# Directory to store the results
 reads_dir=/usr/gallus/binary.reads						# Directory containing reads
 
-genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 			# filename of binary archive for sequencing run; NF='number of fields' aka. last field
 lines="high low"
 
 # gallus_high_frag_35bp_1.filtered.dat  gallus_high_mate_2x50bp.filtered.dat               gallus_low_frag_35bp_1.filtered.dat  gallus_low_mate_2x50bp.filtered.dat
@@ -132,10 +131,10 @@ echo -e "H) Hash size, single-end default 15: \t\t\t\t\t $txtred$hash_size$txtrs
 echo -e "J) Maximum hash positions, default 100: \t\t\t\t $txtred$mhp$txtrst \t max hash positions"
 echo -e "\nM) Single-end maximum mismatches allowed, 35bp default 4: \t\t $txtred$SE_mismatches$txtrst \t SE mismatches"
 echo -e "N) Mate-pair/paired-end maximum mismatches allowed, 50bp default 6: \t $txtred$MP_mismatches$txtrst \t MP mismatches" 
-echo -e "\nA) Single-end alignment candidate threshold, SE default 20: \t\t $txtred$SE_act$txtrst \t alignment candidate threshold"
-echo -e "B) Mate-pair/paired-end alignment candidate threshold, MP default 25: \t $txtred$MP_act$txtrst \t alignment candidate threshold"
-echo -e "\nC) Single-end Smith-Waterman bandwidth, SE default 13: \t\t\t $txtred$SE_bandwidth$txtrst \t SW bandwidth"
-echo -e "D) Mate-pair/paired-end Smith-Waterman bandwidth, MP default 17: \t $txtred$MP_bandwidth$txtrst \t SW bandwidth \n\n"
+echo -e "\nA) Single-end alignment candidate threshold, SE default 20: \t\t $txtred$SE_act$txtrst \t SE alignment candidate threshold"
+echo -e "B) Mate-pair/paired-end alignment candidate threshold, MP default 25: \t $txtred$MP_act$txtrst \t MP alignment candidate threshold"
+echo -e "\nC) Single-end Smith-Waterman bandwidth, SE default 13: \t\t\t $txtred$SE_bandwidth$txtrst \t SE SW bandwidth"
+echo -e "D) Mate-pair/paired-end Smith-Waterman bandwidth, MP default 17: \t $txtred$MP_bandwidth$txtrst \t MP SW bandwidth \n\n"
 #echo -e "F) Mean fragment length/insert size: \t\t\t\t\t $txtred$mfl$txtrst\t bp mean fragment length"
 #echo -e "R) Search radius from mean fragment length: \t\t\t\t $txtred$radius$txtrst\t bp radius"
 #echo -e "T) Parallel threads created in pipeline steps, default 14: \t\t $txtred$threads$txtrst \t threads"
@@ -305,16 +304,24 @@ DrawMenu
 ######################## Initialize pipeline #########################
 echo -e "\n\n$txtpur INITIALIZE PIPELINE $txtrst"
 startrun=$SECONDS
+
 #cd $refseq_dir
 #list=`ls $refseq_dir/*chr*.fa | awk -F"/" '{print $NF}'`			# gives basename, i.e. chrM.fa or v_chr13.fa
 #list
 #mkdir $project_name 2>/dev/null
+
 mkdir $results_dir 2>/dev/null
 
 # reads=`ls $reads_dir/*.dat`
 
 file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filename, used in functions
+genomes=`ls $reads_dir | awk -F "/" '{print $NF}'` 				# filename of binary archive for sequencing run; NF='number of fields' aka. last field
 
+echo $project_name
+echo $results_dir
+echo $reads_dir
+echo $file
+echo $genomes
 
 ############################ Assembly loop ############################
 
@@ -337,7 +344,7 @@ file=`ls $refseq_dir/*.fa | awk -F "/" '{print $NF}'`				# this is refseq filena
 
 
 #################### Alignment manipulation loop ######################
-# STM, Sort -> Text -> MarkDuplicates (Merge - > Coverage -> Assemble) loop
+# STM, Sort -> Text -> MarkDuplicates loop
 
 	for genome in $genomes; do
 		start=$SECONDS
