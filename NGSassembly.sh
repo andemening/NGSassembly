@@ -378,10 +378,10 @@ echo $genomes
 		start=$SECONDS		
 		echo -e "Calling SNPs between lines in $project_name..." | tee -a $results_dir/pipeline.log
 
-		mkdir $results_dir/SNPcalling
+#		mkdir $results_dir/SNPcalling
 		## SNP calls in $threads number of threads
 
-		CallSNP & 					# Start and detach process		
+		CallSNP					# Start and detach process		
 
 #		PID=$!					# Get PID of process just started
 #		queue $PID					# 

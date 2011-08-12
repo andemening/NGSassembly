@@ -21,3 +21,10 @@
 		$mosaik_dir/bamtools index $results_dir/$merging_name
 	done
 	$mosaik_dir/bamaddrg $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf" --log $results_dir/$line".called.log"
+
+# Coverage calculation using samtools merge piped to BEDtools genomeCoverageBed histogram file (all bases covered)
+# Combined total bases, mean coverage and max
+cat bajs.dat | awk -F "\t" '{print $3}' | awk '{for (i=1; i<=NF; i++) s=s+$i} $1>=max {max=$1} END {print "\nTotal bases: "NR, "\nMean coverage: "s/NR, "\nMaximum coverage (minimum coverage is 0): "max}'
+
+# with SD 
+awk -F "\t" '{print $3}' bajs.dat | awk '{for (i=1; i<=NF; i++) s=s+$i} {sum+=$1;sumsq+=$1*$1} $1>=max {max=$1} END {print "\nTotal bases: "NR, "\nMean coverage: "s/NR, "(SD: "(sqrt(sumsq/NR-(sum/NR)^2)), ")", "\nMaximum coverage (minimum coverage 0): "max}'
