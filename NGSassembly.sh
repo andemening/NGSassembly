@@ -376,7 +376,7 @@ echo $genomes
 	
 #	for line in $lines; do
 		start=$SECONDS		
-		echo -e "Calling SNPs between lines in $project_name..." | tee -a $results_dir/pipeline.log
+		echo -e "Calling SNPs for $lines in $project_name..." | tee -a $results_dir/pipeline.log
 
 #		mkdir $results_dir/SNPcalling
 		## SNP calls in $threads number of threads
@@ -391,16 +391,17 @@ echo $genomes
 #			sleep 10
 #		done
 
+		wait
 		end=$SECONDS
 		exectime=$((end - start))
 		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 #	done
 #done
 
+
 endrun=$SECONDS
 totaltime=$((endrun - startrun))
-
-echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. \n$txtgrn Run completed. $txtrst \n" | tee -a $results_dir/pipeline.log
+echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. $txtgrn \n Run completed. $txtrst \n" | tee -a $results_dir/pipeline.log
 
 
 

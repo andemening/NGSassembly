@@ -174,9 +174,11 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 		# -Xms, initial (start) java heap size
 		# -Xmx, maximum java heap size 
 		# MAX_RECORDS_IN_RAM=10M reads, for ~100bp reads set 250k reads per 1GB RAM, 50 * 250k ~= 13M
+		# 
+	
+	# CONSIDER REMOVAL OF DUPLICATE READS FOR SMALLER FILE SIZES AND FASTER DOWNSTREAM EXECUTION	
 		
-		
-	java -d64 -Xmx56G -Xms50G -jar $mosaik_dir/MarkDuplicates.jar MAX_RECORDS_IN_RAM=18 000 000 INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true | tee -a $results_dir/$genome/markduplicates.log
+	java -d64 -Xmx56G -Xms50G -jar $mosaik_dir/MarkDuplicates.jar MAX_RECORDS_IN_RAM=25000000 INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true |& tee -a $results_dir/$genome/Picard.MarkDuplicates.log
 	sleep 2
 	rm -rf $results_dir/$genome/$genome".aligned.sorted.bam" 2>/dev/null
 	en=$SECONDS
@@ -271,8 +273,8 @@ function CallSNP {				## Calling SNPs and short INDELS
 		# --ignore-reference-allele
 		# --use-duplicate-reads, DO NOT USE
 
-	SNPstart=$SECONDS
-	echo -e "\tSNP calling in $genome..." | tee -a $results_dir/pipeline.log
+#	SNPstart=$SECONDS
+#	echo -e "\tSNP calling in $genome..." | tee -a $results_dir/pipeline.log
 
 #	# Add read group names with bamaddrg
 #	
@@ -290,7 +292,7 @@ function CallSNP {				## Calling SNPs and short INDELS
 	# bamleftalign only required for MP reads when INDEL calling
 #	$mosaik_dir/bamleftalign -f $refseq_dir/$file/
 
-	bam_files=`find $results -name \*.Marked.bam -print | awk -F "/" '{print $NF}'`	# lists all bam-files in current line
+	bam_files=`find $results_dir -name \*.Marked.bam -print | awk -F "/" '{print $NF}'`	# lists all bam-files in current line
 	infiles=""
 	for merging_name in $bam_files; do
 		RG_basename=`echo $merging_name | awk -F "/" '{print $NF}' | awk -F "." '{print $1}'`
@@ -304,14 +306,14 @@ function CallSNP {				## Calling SNPs and short INDELS
 		esac
 #		$mosaik_dir/bamtools index $results_dir/$merging_name
 	done
-	$mosaik_dir/bamaddrg $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob -0 --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$file".called.vcf"
+	$mosaik_dir/bamaddrg $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob --no-filters --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$file".called.vcf"
 
 	# WRONG?? no sample names are given -> using name of BAM file as sample name
 #	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob --min-coverage $CAL --min-mapping-quality $MAQ --min-base-quality $BAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf" --log $results_dir/$line".called.log"
 
-			SNPend=$SECONDS
-	SNPtime=$((SNPend - SNPstart))
-	echo -e "\tSNP calling done in $exectime seconds." | tee -a $results_dir/pipeline.log
+#	SNPend=$SECONDS
+#	SNPtime=$((SNPend - SNPstart))
+#	echo -e "\tSNP calling done in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
