@@ -25,6 +25,10 @@
 # Merge bam files in stream and pipe to BEDtools genomeCoverageBed for coverage calculation of histogram  
 ~/bamtools/bin/bamtools merge -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_frag_35bp_1.filtered.dat.aligned.sorted.Marked.bam -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_frag_35bp_2.filtered.dat.aligned.sorted.Marked.bam -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_mate_2x50bp.filtered.dat.aligned.sorted.Marked.bam | ~/BEDtools/bin/genomeCoverageBed -ibam stdin -bga -g chromInfo.txt > coverage.galGal3.high.bedgraph
 
+Output stream from BEDtools: bamtools merge | BEDtools genomeCoverageBed | awk calculation, no saving of histogram coverage file
+~/bamtools/bin/bamtools merge -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_frag_35bp_1.filtered.dat.aligned.sorted.Marked.bam -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_frag_35bp_2.filtered.dat.aligned.sorted.Marked.bam -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_mate_2x50bp.filtered.dat.aligned.sorted.Marked.bam | ~/BEDtools/bin/genomeCoverageBed -ibam stdin -d -g ../chromInfo.no_random.txt 
+
+
 # Calculation of X coverage using samtools merge piped to BEDtools genomeCoverageBed histogram file (all bases covered)
 # Combined total bases, mean coverage and max
 cat filename | awk -F "\t" '{print $3}' | awk '{for (i=1; i<=NF; i++) s=s+$i} $1>=max {max=$1} END {print "\nTotal bases: "NR, "\nMean coverage: "s/NR, "\nMaximum coverage (minimum coverage is 0): "max}'
@@ -35,4 +39,8 @@ time awk -F "\t" '{print $3}' filename | awk '{for (i=1; i<=NF; i++) s=s+$i} {su
 # With % coverage, how many percent of genome is covered with contigs
 time awk -F "\t" '{print $3}' filename | awk '$1!=0 {contigs++} {for (i=1; i<=NF; i++) s=s+$i} {sum+=$1;sumsq+=$1*$1} $1>=max {max=$1} END {print "\n\nTotal bases: "NR, "\nMean coverage: "s/NR, "( SD: "(sqrt(sumsq/NR-(sum/NR)^2)), ")", "\nMaximum coverage: "max, "( minimum coverage 0 )", "\n\nBases with coverage / contigs: "contigs, "\nContig coverage, percent of genome covered by contigs: "contigs*100/NR, "%"}'
 
-awk '{for (i=1; i<=NF; i++) s=s+$i} {sum+=$1;sumsq+=$1*$1} $1>=max {max=$1} END {print "\nTotal bases: "NR, "\nMean coverage: "s/NR, "(SD: "(sqrt(sumsq/NR-(sum/NR)^2)), ")", "\nMaximum coverage (minimum coverage 0): "max, "\nContig coverage, percent of genome covered by contigs: "NR/}'
+Everything at the same time: 
+~/bamtools/bin/bamtools merge -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_frag_35bp_1.filtered.dat.aligned.sorted.Marked.bam -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_frag_35bp_2.filtered.dat.aligned.sorted.Marked.bam -in ~/NGSassembly/gallus.results/SNPcall/gallus_high_mate_2x50bp.filtered.dat.aligned.sorted.Marked.bam \
+| ~/BEDtools/bin/genomeCoverageBed -ibam stdin -d -g ../chromInfo.no_random.txt \
+|& tee -a bajs | time awk -F "\t" '{print $3}' \
+| awk '$1!=0 {contigs++} {for (i=1; i<=NF; i++) s=s+$i} {sum+=$1;sumsq+=$1*$1} $1>=max {max=$1} END {print "\n\nTotal bases: "NR, "\nMean coverage: "s/NR, "( SD: "(sqrt(sumsq/NR-(sum/NR)^2)), ")", "\nMaximum coverage: "max, "( minimum coverage 0 )", "\n\nBases with coverage / contigs: "contigs, "\nContig coverage, percent of genome covered by contigs: "contigs*100/NR, "%"}'

@@ -163,6 +163,7 @@ function UpdateSettings() {
 			echo -ne $txtred"Enter new value: $txtrst"
 			read
 			project_name=$REPLY
+			results_dir=$main_dir/$project_name".results"
 		;;
 		"2" ) 
 			echo -ne $txtred"Enter new value: $txtrst"
