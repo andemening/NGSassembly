@@ -224,7 +224,7 @@ function MarkDuplicates {			## Remove duplicate PCR products to improve SNP dete
 #	rm -rf $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.GATKrealigned.bam" 2>/dev/null
 #	en=$SECONDS
 #	exectime=$((en - st))
-#	echo -e "\tBAM left-algin and BAQ calculation done in $exectime seconds." | tee -a $results_dir/pipeline.log
+#	echo -e "\tBAM left-align and BAQ calculation done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
 
 ####################### SNP call pipe #####################
@@ -264,10 +264,10 @@ function CallSNP {				## Merge BAM alignments and call SNPs and short INDELs
 		RG_basename=`echo $merging_name | awk -F "/" '{print $NF}' | awk -F "." '{print $1}'`
 		case $merging_name in 
 			*"high"*)
-				infiles="$infiles -b $merging_name -s RG_basename -r $RG_basename"
+				infiles="$infiles -b $merging_name -s HIGH -r $RG_basename"
 				;;
 			*"low"*)
-				infiles="$infiles -b $merging_name -s RG_basename -r $RG_basename"
+				infiles="$infiles -b $merging_name -s LOW -r $RG_basename"
 				;;
 		esac
 #		$mosaik_dir/bamtools index $results_dir/$merging_name

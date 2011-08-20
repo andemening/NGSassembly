@@ -356,6 +356,7 @@ done
 		Sort
 		Text
 		MarkDuplicates
+		# BAMIndex &
 		
 		end=$SECONDS
 		exectime=$((end - start))
