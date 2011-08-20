@@ -70,7 +70,7 @@ threads=2
 #threads=`echo $lines | wc -w`
 
 #------------------- Settings for SNP calling -----------------------
-poly_prob=0.001		#Polymorphism probability threshold
+poly_prob=0.0001		#Polymorphism probability threshold
 CAL=3				#SNP calling minimum number of reads
 MAQ=15			#MAQ mapping alignment quality
 BAQ=15			#BAQ base quality
@@ -96,11 +96,12 @@ echo -e "# GitHub repo: git://github.com/Papegoja/NGSassembly.git      #"
 echo -e "# Date: 13.07.2011                                            #"
 echo -e "############################################################### $txtrst \n"
 
-echo -e $txtylw"Program assembles genome from concatenated chromosome fasta files. First set up working directories and pipeline variables. "
+echo -e $txtylw"Program assembles genome from concatenated chromosome fasta files, one file residing in reference sequence directory." 
+echo -e "First set up working directories and pipeline variables. "
 echo -e "Originally written for SOLiD reads taking two different read lengths into account, 35bp fragment and 2x50bp mate-pair runs. "
 echo -e "Alignment is done in linear processing fashion using multiple cores. Other steps are run in parallel. "
 echo -e "SNP calling is done in streaming fashion after merging of lines. Alignments are sorted and converted to BAM file format. "
-echo -e "BAM files are processed and duplicate reads are marked using Picard MarkDuplicates. "
+echo -e "BAM files are processed and duplicate reads are removed using Picard MarkDuplicates. "
 echo -e "Read-groups and sample names added to files using bamaddrg and streamed to FreeBayes for SNP calling. "
 echo -e "This analysis pipeline requires a lot of disk space. $txtredMake sure paths are set correctly as script will replace existing results directory. "
 echo -e "All programs need to reside in same directory !! $txtrst"
@@ -142,7 +143,7 @@ echo -e "D) Mate-pair/paired-end Smith-Waterman bandwidth, MP default 17: \t $tx
 
 
 echo -e $txtgrn"################# Settings for SNP calling ############################## $txtrst"
-echo -e "S) SNP calling probability threshold, default 0.5: \t\t\t $txtred$poly_prob$txtrst \t calling probabilty"
+echo -e "S) SNP calling probability threshold, default 0.0001: \t\t\t $txtred$poly_prob$txtrst \t calling probabilty"
 echo -e "R) Minimum number of reads per SNP call, default 3: \t\t\t $txtred$CAL$txtrst \t minimum reads"
 echo -e "U) Minimum required mapping quality for alignment, default 15: \t\t $txtred$MAQ$txtrst \t mapping quality"
 echo -e "V) Minimum required base quality for sequencing read, default 15: \t $txtred$BAQ$txtrst \t base quality"
@@ -325,23 +326,23 @@ echo $file
 echo $genomes
 
 ############################ Assembly loop ############################
+# Semi-sequential run
 
-	# Semi-sequential run
-	Build	&					# detachable process
-	BuildCS					# non-detachable process
-	JumpDB 					# dependent on BuildCS
+Build	&					# detachable process
+BuildCS					# non-detachable process
+JumpDB 					# dependent on BuildCS
+sleep 8
+for genome in $genomes; do
+	start=$SECONDS
+	echo -e "Processing $genome..." | tee -a $results_dir/pipeline.log
+	mkdir $results_dir/$genome 2>/dev/null
 
-	for genome in $genomes; do
-		start=$SECONDS
-		echo -e "Processing $genome..." | tee -a $results_dir/pipeline.log
-		mkdir $results_dir/$genome 2>/dev/null
-
-		Align					# utilizes $proc processors
-		
-		end=$SECONDS
-		exectime=$((end - start))
-		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
-	done
+	Align					# utilizes $proc processors
+	
+	end=$SECONDS
+	exectime=$((end - start))
+	echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
+done
 
 
 #################### Alignment manipulation loop ######################
@@ -362,6 +363,28 @@ echo $genomes
 	done
 
 
+######################### GATK local realignment and BAQ adjustment ############################
+#NUM=0
+#QUEUE=""
+#
+#	for genome in $genomes; do
+#		start=$SECONDS		
+#		echo -e "BAM leftalign and BAQ adjustment in $genome..." | tee -a $results_dir/pipeline.log
+#		GATKBAQ &				# Start and detach process		
+#		PID=$!					# Get PID of process just started
+#		queue $PID					# 
+#		# Spawn process
+#		while [ $NUM -ge 4 ]; do 		# If $NUM is greater or equal to $threads check and regenerate queue
+#			checkqueue
+#			sleep 10
+#		done
+#		wait
+#		end=$SECONDS
+#		exectime=$((end - start))
+#		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
+#	done
+#wait
+
 ############################# SNP calling loop ################################
 # Multi-threaded SNP calling, high- and low-line calling done separately
 
@@ -377,7 +400,7 @@ echo $genomes
 	
 #	for line in $lines; do
 		start=$SECONDS		
-		echo -e "Calling SNPs for $lines in $project_name..." | tee -a $results_dir/pipeline.log
+		echo -e "Calling SNPs for \"$lines\" in $project_name..." | tee -a $results_dir/pipeline.log
 
 #		mkdir $results_dir/SNPcalling
 		## SNP calls in $threads number of threads
@@ -392,17 +415,17 @@ echo $genomes
 #			sleep 10
 #		done
 
-		wait
+#		wait
 		end=$SECONDS
 		exectime=$((end - start))
-		echo -e "done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
+		echo -e "SNP calling done in $exectime seconds.\n\n" | tee -a $results_dir/pipeline.log
 #	done
 #done
 
 
 endrun=$SECONDS
 totaltime=$((endrun - startrun))
-echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. $txtgrn \n Run completed. $txtrst \n" | tee -a $results_dir/pipeline.log
+echo -e $txtylw "\nComplete assembly and SNP calling done in $totaltime seconds. $txtgrn \nRun completed. $txtrst \n" | tee -a $results_dir/pipeline.log
 
 
 

@@ -16,16 +16,16 @@
 function Build {					## Create binary file in basespace from genome FASTA file
 		# -fr,-fr2 bases for 1st mate and 2nd mate
 		# -fq,-fq2 base qualities for 1st mate and 2nd mate
-		# -assignQual assign a quality value to all bases
+		# -assignQual assign a quality value to all bases, bad setting beacuse it discards qualities completely
 		# -oa outfile for reference sequence; -out outfile when converting reads
 		# -st specifies sequencing technology; -ds description; -ln library name
 		# -mfl specify median fragment length for mate-pairs
-
+		
 		# -ga genome assembly ID, eg. galGal3
 		# -sn species name, eg. "gallus gallus domesticus"
 		# -sam sample name, HS_MP_2x50bp 	MW_MP_2x50bp 	HS_SE_35bp_1 	HS_SE35bp_2 	MW_SE_35bp_1 	MW_SE_35bp_2
 		
-
+		
 		# Archive gallus_high_2x50bp_matepairs_csfasta.qual.tar.gz contains: 
 		# ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_F3.csfasta
 		# ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_F3_QV.qual
@@ -34,7 +34,6 @@ function Build {					## Create binary file in basespace from genome FASTA file
 		# Library: HIGH_LINE	LOW_LINE
 		# Group: HS_MP_2x50bp 	MW_MP_2x50bp 	HS_SE_35bp_1 	HS_SE35bp_2 	MW_SE_35bp_1 	MW_SE_35bp_2
 
-		# -assignQual <value> = assign <value> quality to every base
 		# ~/mosaik-aligner/bin/MosaikBuild -fr ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_F3.csfasta.gz -fq ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_F3_QV.qual.gz -fr2 ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_R3.csfasta.gz -fq2 ugc_208_209_MP_2x50bp_solid0105_20091127_ugc_208_R3_QV.qual.gz -st solid -ln HIGH_LINE -id HS_MP_2x50bp -ds "gallus high HS 2x50bp mate-pairs" -sn "gallus gallus domesticus" -mfl 400 -out gallus_HS_2x50bp.dat | tee -a build.gallus_HS_2x50bp.log
 		#  -ln HIGH_LINE -id HS_MP_2x50bp -ds "gallus high HS 2x50bp mate-pairs" -sn "gallus gallus domesticus"
 
@@ -50,6 +49,7 @@ function Build {					## Create binary file in basespace from genome FASTA file
 
 	echo -e "\tCreating binary file in basespace for $genome..." | tee -a $results_dir/pipeline.log
 	$mosaik_dir/MosaikBuild -fr $refseq_dir/$file -oa $results_dir/$file".dat" | tee -a $results_dir/build.log
+	$mosaik_dir/samtools faidx $refseq_dir/$file 2>/dev/null
 	$mosaik_dir/fixlog $results_dir/build.log
 }
 
@@ -122,7 +122,8 @@ function Align {					## Align
 			;;
 	esac
 
-	$mosaik_dir/MosaikAligner -in $reads_dir/$genome -ia $results_dir/$file".cs.dat" -ibs $results_dir/$file".dat" -hs $hash_size -mm $mismatches -bw $bandwidth -act $act -mhp $mhp -m all -a all -p $proc -out $results_dir/$genome/$genome".aligned.dat" -j $results_dir/$file".jmp" | tee -a $results_dir/mosaik.log
+	($mosaik_dir/MosaikAligner -in $reads_dir/$genome -ia $results_dir/$file".cs.dat" -ibs $results_dir/$file".dat" -hs $hash_size -mm $mismatches -bw $bandwidth -act $act -mhp $mhp -m all -a all -p $proc -out $results_dir/$genome/$genome".aligned.dat" -j $results_dir/$file".jmp" 2>&1 | tee -a $results_dir/mosaik.log ; exit ${PIPESTATUS[0]} )
+	#((some_command 2>&1 1>&3 | tee /dev/stderr ; exit ${PIPESTATUS[0]}) 3>&1)
 	sleep 6
 	$mosaik_dir/fixlog $results_dir/mosaik.log
 	en=$SECONDS
@@ -140,7 +141,6 @@ function Sort {					## Sorting, two different approaches for SE and MP
 		# -afl allow all fragment lengths for PE/MP reads
 		# -sa sample all unique vs non-unique fragment lengths
 		# -rmm resolve multiple vs multiple read pairs
-		# -dup <Directory>, filters out duplicate reads, DISCARDS reads with lower alignment quality score
 		
 	st=$SECONDS
 	echo -e "\tSorting aligned reads for $genome..." | tee -a $results_dir/pipeline.log
@@ -168,95 +168,69 @@ function Text {					## Convert assembly archive to BAM file format for analysis 
 }
 
 
-function MarkDuplicates {			## Remove duplicate PCR products to improve SNP detection
+function MarkDuplicates {			## Remove duplicate PCR products to improve SNP detection, non-detachable
 	st=$SECONDS
-	echo -e "\tMarking duplicate reads for $genome..." | tee -a $results_dir/pipeline.log
+	echo -e "\tRemoving duplicate reads (dedup) for $genome..." | tee -a $results_dir/pipeline.log
 		# -Xms, initial (start) java heap size
 		# -Xmx, maximum java heap size 
-		# MAX_RECORDS_IN_RAM=10M reads, for ~100bp reads set 250k reads per 1GB RAM, 50 * 250k ~= 13M
+		# MAX_RECORDS_IN_RAM=25M reads, for ~100bp reads set 250k reads per 1GB RAM, 0.5 * 50 * 250k = 25M
 		# 
 	
 	# CONSIDER REMOVAL OF DUPLICATE READS FOR SMALLER FILE SIZES AND FASTER DOWNSTREAM EXECUTION	
 		
-	java -d64 -Xmx56G -Xms50G -jar $mosaik_dir/MarkDuplicates.jar MAX_RECORDS_IN_RAM=25000000 INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.Marked.bam" METRICS_FILE=$results_dir/$genome/$genome".Marked.metrics.txt" REMOVE_DUPLICATES=false ASSUME_SORTED=true |& tee -a $results_dir/$genome/Picard.MarkDuplicates.log
+	java -d64 -Xmx56G -Xms50G -jar $mosaik_dir/MarkDuplicates.jar MAX_RECORDS_IN_RAM=25000000 INPUT=$results_dir/$genome/$genome".aligned.sorted.bam" OUTPUT=$results_dir/$genome/$genome".aligned.sorted.dedup.bam" METRICS_FILE=$results_dir/$genome/$genome".dedup.metrics.txt" REMOVE_DUPLICATES=true ASSUME_SORTED=true |& tee -a $results_dir/$genome/Picard.MarkDuplicates.Removed.log
 	sleep 2
 	rm -rf $results_dir/$genome/$genome".aligned.sorted.bam" 2>/dev/null
 	en=$SECONDS
 	exectime=$((en - st))
-	echo -e "\tMarked duplicates in $exectime seconds." | tee -a $results_dir/pipeline.log
+	echo -e "\tRemoved duplicates in $exectime seconds." | tee -a $results_dir/pipeline.log
 }
 
 
-#function Merge {					## Merge all sequencing lines (high line and low line) for overall assembly coverage 
-#		# -mem number of alignments in memory, sets sorting cache, default 6000000
+#function GATKBAQ {
+#	GATKLocalRealignment
+#	BAQAdjustment
+#}
 #
+#
+#function GATKLocalRealignment {			## Local realignment around INDELs using GATK, parallel threads
 #	st=$SECONDS
-#	echo -e "\t Merging all lines for $chromosome…"
+#	echo -e "\tLocal realignment using GATK for $genome..." | tee -a $results_dir/pipeline.log
 #
-#	dedup.sorted_files=`find $results/$chromosome -name \*.dedup.sorted.dat -print`	# lists all bam-files in current chromosome
-#	infiles=""
-#	for merging_name in $dedup.sorted_files; do
-#		infiles="$infiles-in $merging_name "							# generate in variable for merging command
-#	done
-#
-#	$mosaik_dir/MosaikMerge $infiles -mem 12000000 -out $results_dir/$chromosome/$chromosome".merged.dat" | tee -a $results_dir/merge.coverage.log
-#	$mosaik_dir/fixlog $results_dir/merge.coverage.log
+#	# 1h30 + 45m
+#	# detachable processes ? 
+#	# RealignerTargetCreator -> IndelRealigner	
+#	$mosaik_dir/bamtools index -in $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.bam" 
+#	java -Xmx7G -jar $mosaik_dir/GenomeAnalysisTK.jar -T RealignerTargetCreator --maxReadsInMemory 300000 -I $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.bam" -R $refseq_dir/$file -o GATK.output.intervals |& tee -a $results_dir/$genome/GATK.realignment.log
+#	java -Xmx7G -jar $mosaik_dir/GenomeAnalysisTK.jar -T IndelRealigner --maxReadsInMemory 300000 -I $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.bam" -R $refseq_dir/$file -o $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.GATKrealigned.bam" |& tee -a $results_dir/$genome/GATK.realignment.log
+#	sleep 5
+#	rm -rf $results_dir/$genome/$genome".aligned.sorted.dedup.bam" 2>/dev/null 
 #	en=$SECONDS
 #	exectime=$((en - st))
-#	echo -e "\tMerge done in $exectime seconds." | tee -a $results_dir/pipeline.log
+#	echo -e "\tLocal realignment done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
-
-
-#function Coverage {				## Calculate coverage for all sequencing lines (high line and low line)
-#		# -in alignment file
-#		# -ia reference sequence colorspace dat file
-#		# -u limits coverage analysis to unique reads - duplicate reads already removed
-#		# -mc minimum coverage, default 1
-#		# -cg plots graph using gnuplot, also containing pdf - takes time for large chromosomes
-#		# -od output directory for analysis
-#		# -ngc skips making graphs and coverage files
-#		
-#	st=$SECONDS
-#	echo -e "\tCalculating coverage for all lines of chromosome $chromosome (unique reads only)..."
-#	$mosaik_dir/MosaikCoverage -in $results_dir/$chromosome/$chromosome".merged.dat" -ia $refseq_dir/$chromosome/$chromosome".dat" -od $results_dir/$chromosome/"coverage" | tee -a $results_dir/merge.coverage.log
-##	~/mosaik-aligner/bin/MosaikCoverage -ia ~/chr2/chr2.cs.dat -in chr2.aligned.sorted.dat -u -mc 3 -cg -od coverage
-#	$mosaik_dir/fixlog $results_dir/merge.coverage.log
-#	en=$SECONDS
-#	exectime=$((en - st))
-#	echo -e "\tPlotting coverage done in $exectime seconds." | tee -a $results_dir/pipeline.log
-#}
-
-
-#function Assemble {				## Multiple sequence alignment and assembly 
-#		# -in alignment file
-#		# -ia reference sequence colorspace dat file
-#		# -out filename stub/prefix for output file
-#		# -f output file format, default ACE
+#
+#
+#function BAQAdjustment {				## BAQ adjustment
+#	st=$SECONDS	
+#	echo -e "\tBAM left-align and BAQ calculation for $genome..." | tee -a $results_dir/pipeline.log
+#		# samtools view for piping to...
+#		# bamleftalign
+#		# samtools fillmd 
+#		# output new BAM file leftaligned.BAQ
 #	
-#	st=$SECONDS
-#	echo -e "\tAssembling chromosome $chromosome in line $genome..."
-#	$mosaik_dir/MosaikAssembler -in $results_dir/$chromosome/$genome/$chromosome".sorted.dedup.dat" -ia $results_dir/$chromosome/$chromosome".cs.dat" -f ace -out assembly_ | tee -a $results_dir/$chromosome/mosaik.log
-#	$mosaik_dir/fixlog $results_dir/$chromosome/mosaik.log
+#	($mosaik_dir/samtools view -b $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.GATKrealigned.bam" | $mosaik_dir/samtools fillmd -br - $refseq_dir/$file > $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.GATKrealigned.BAQ.bam" 2>&1 |& tee -a $results_dir/$genome/samtools.BAQ.log ; exit ${PIPESTATUS[0]} )
+#	sleep 5
+#	rm -rf $results_dir/$genome/$results_dir/$genome/$genome".aligned.sorted.dedup.GATKrealigned.bam" 2>/dev/null
 #	en=$SECONDS
 #	exectime=$((en - st))
-#	echo -e "\tAssembly done in $exectime seconds." | tee -a $results_dir/pipeline.log
+#	echo -e "\tBAM left-algin and BAQ calculation done in $exectime seconds." | tee -a $results_dir/pipeline.log
 #}
-
-
-function STM { 				## These functions run in sequential fashion
-#			Merge					# Merge all chromosomes in each line to get complete coverage; total coverage for all pooled sequences (important for SNP statistics?) 
-#			Coverage				# Calculate coverage
-#		Assemble					# Assemble alignment chromosome by chromosome and output ACE file
-		Sort						# Sort SE reads; sort and resolve MP reads
-		Text						# Convert binary alignment DAT to BAM
-		MarkDuplicates				# Mark PCR duplicates
-}
-
 
 ####################### SNP call pipe #####################
 # all previous functions must have completed before this step
 
-function CallSNP {				## Calling SNPs and short INDELS
+function CallSNP {				## Merge BAM alignments and call SNPs and short INDELs
 		# Pipe entire SNP call command from stdout to stdin; bamaddrg -> freebayes
 		# Bamtools merge piped to bamleftalign for homogenization of positional distribution of IN/DELs, computationally inexpensive
 		# bamtools merge xxx | bamleftalign xxx | freebayes --stdin -f $refseq_dir/$chomosome/$file --ploidy diploid --indel -dd --pvar $poly_prob --min-coverage $CAL -v $results_dir/$chromosome/$chromosome".called.vcf" --log $results_dir/$chromosome/$genome$/freebayes.merged.leftaligned.log
@@ -277,39 +251,28 @@ function CallSNP {				## Calling SNPs and short INDELS
 #	echo -e "\tSNP calling in $genome..." | tee -a $results_dir/pipeline.log
 
 #	# Add read group names with bamaddrg
-#	
 #	# bamaddrg settings: 
 #		# -s sample name, set to chromosome
 #		# -r read group, set to genome/reads filename (gallus_high_35_1, gallus_low_50, ...)
 	
-#	bam_files=`find $results -name \*.Marked.bam -print | awk -F "/" '{print $NF}'`	# lists all bam-files in current line
-#	infiles=""
-#	for merging_name in $bam_files; do
-#		$mosaik_dir/bamtools index $results_dir/$merging_name
-#		infiles="$infiles -in $merging_name"							# generate in variable for merging command
-#	done
-
-	# bamleftalign only required for MP reads when INDEL calling
+# 	bamleftalign only required for MP reads when INDEL calling
 #	$mosaik_dir/bamleftalign -f $refseq_dir/$file/
 
-	bam_files=`find $results_dir -name \*.Marked.bam -print | awk -F "/" '{print $NF}'`	# lists all bam-files in current line
+	bam_files=`find $results_dir -name \*.dedup.bam -print 	#| awk -F "/" '{print $NF}'`	# lists all bam-files in current line
 	infiles=""
 	for merging_name in $bam_files; do
 		RG_basename=`echo $merging_name | awk -F "/" '{print $NF}' | awk -F "." '{print $1}'`
 		case $merging_name in 
 			*"high"*)
-				infiles="$infiles -b $merging_name -s HIGHline -r $RG_basename"
+				infiles="$infiles -b $merging_name -s RG_basename -r $RG_basename"
 				;;
 			*"low"*)
-				infiles="$infiles -b $merging_name -s LOWline -r $RG_basename"
+				infiles="$infiles -b $merging_name -s RG_basename -r $RG_basename"
 				;;
 		esac
 #		$mosaik_dir/bamtools index $results_dir/$merging_name
 	done
 	$mosaik_dir/bamaddrg $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob --no-filters --min-coverage $CAL --min-mapping-quality $MAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$file".called.vcf"
-
-	# WRONG?? no sample names are given -> using name of BAM file as sample name
-#	$mosaik_dir/bamtools merge $infiles | $mosaik_dir/freebayes --stdin -f $refseq_dir/$file --pooled --ploidy $ploidy -dd --pvar $poly_prob --min-coverage $CAL --min-mapping-quality $MAQ --min-base-quality $BAQ --ignore-reference-allele --use-mapping-quality -v $results_dir/$line/$line"_"$file".called.vcf" --log $results_dir/$line".called.log"
 
 #	SNPend=$SECONDS
 #	SNPtime=$((SNPend - SNPstart))
