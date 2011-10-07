@@ -27,4 +27,5 @@ This analysis pipeline requires a lot of disk space.
 Make sure paths are set correctly as script will replace existing results directory. 
 All programs need to reside in same directory. 
 The reads files are processed from reads directory. 
-                      
+
+
